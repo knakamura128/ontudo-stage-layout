@@ -1,167 +1,124 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { PointerEvent, useMemo, useRef, useState } from "react";
 
-type SectionKey = "arrangement" | "details" | "check";
+type StageObject = { id: number; label: string; kind: "instrument" | "stand" | "chair"; x: number; y: number; power: boolean };
 
-const initialRows = [
-  { id: 1, name: "前列", count: 18, tone: "coral" },
-  { id: 2, name: "中列", count: 18, tone: "sky" },
-  { id: 3, name: "後列", count: 16, tone: "navy" },
-  { id: 4, name: "ひな壇", count: 8, tone: "ochre" },
-];
+const playerGroups = [
+  ["Tp", 16], ["Tb", 6], ["Hr", 6], ["Euph", 4], ["Cl", 13], ["Fl", 6], ["A.Sax", 4], ["B.Sax", 3], ["Tub", 3],
+] as const;
 
-const navItems: { key: SectionKey; label: string; icon: string }[] = [
-  { key: "arrangement", label: "舞台配置", icon: "⌘" },
-  { key: "details", label: "団体情報", icon: "◇" },
-  { key: "check", label: "提出前チェック", icon: "✓" },
-];
+const loadingOptions = ["管楽器", "ティンパニ", "ドラムセット", "バスドラム", "シロフォン", "ビブラフォン", "グロッケン", "コンガ", "ボンゴ", "ウィンドチャイム", "サスペンドシンバル", "ウッドブロック", "パーカッション小物"];
+const palette = ["ティンパニ", "ドラムセット", "バスドラム", "シロフォン", "ビブラフォン", "グロッケン", "コンガ", "ボンゴ", "ウィンドチャイム", "サスペンドシンバル"];
 
 export default function Home() {
-  const [active, setActive] = useState<SectionKey>("arrangement");
-  const [rows, setRows] = useState(initialRows);
-  const [selectedRow, setSelectedRow] = useState(1);
-  const [hasPiano, setHasPiano] = useState(true);
-  const [hasConductor, setHasConductor] = useState(true);
-  const [submitted, setSubmitted] = useState(false);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [fanLayout, setFanLayout] = useState(true);
+  const [carDelivery, setCarDelivery] = useState<"有" | "無">("無");
+  const [usePower, setUsePower] = useState(false);
+  const [usePiano, setUsePiano] = useState(true);
+  const [usePodium, setUsePodium] = useState(false);
+  const [useMusicStand, setUseMusicStand] = useState(false);
+  const [loading, setLoading] = useState<string[]>(["管楽器"]);
+  const [objects, setObjects] = useState<StageObject[]>([
+    { id: 1, label: "譜面台", kind: "stand", x: 46, y: 70, power: false },
+    { id: 2, label: "椅子", kind: "chair", x: 56, y: 73, power: false },
+  ]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [counts, setCounts] = useState({ microphones: 0, micStands: 0, playerChairs: 60, foldingChairs: 14 });
+  const [saved, setSaved] = useState(false);
 
-  const studentCount = useMemo(
-    () => rows.reduce((total, row) => total + row.count, 0),
-    [rows],
-  );
+  const players = useMemo(() => playerGroups.flatMap(([label, count]) => Array.from({ length: count }, (_, index) => ({ label, index }))), []);
 
-  const adjustRow = (id: number, delta: number) => {
-    setRows((current) =>
-      current.map((row) =>
-        row.id === id ? { ...row, count: Math.max(0, row.count + delta) } : row,
-      ),
-    );
-    setSubmitted(false);
+  const changeCount = (key: keyof typeof counts, value: number) => {
+    setCounts((now) => ({ ...now, [key]: Math.max(0, value) }));
+    setSaved(false);
+  };
+  const addObject = (label: string, kind: StageObject["kind"] = "instrument") => {
+    setObjects((now) => [...now, { id: Date.now(), label, kind, x: 50 + (now.length % 3) * 7, y: 66 + (now.length % 2) * 8, power: false }]);
+    setSaved(false);
+  };
+  const toggleLoading = (label: string) => {
+    setLoading((now) => now.includes(label) ? now.filter((item) => item !== label) : [...now, label]);
+    setSaved(false);
+  };
+  const moveObject = (event: PointerEvent<HTMLButtonElement>) => {
+    if (draggingId === null || !stageRef.current) return;
+    const bounds = stageRef.current.getBoundingClientRect();
+    const x = Math.min(94, Math.max(6, ((event.clientX - bounds.left) / bounds.width) * 100));
+    const y = Math.min(90, Math.max(8, ((event.clientY - bounds.top) / bounds.height) * 100));
+    setObjects((now) => now.map((item) => item.id === draggingId ? { ...item, x, y } : item));
+  };
+  const playerPosition = (position: number) => {
+    const row = Math.floor(position / 16);
+    const inRow = position % 16;
+    const rowSize = Math.min(16, players.length - row * 16);
+    if (!fanLayout) return { left: 18 + inRow * (64 / Math.max(1, rowSize - 1)), top: 18 + row * 15 };
+    const angle = 198 + inRow * (144 / Math.max(1, rowSize - 1));
+    const radius = 29 - row * 5.5;
+    return { left: 50 + Math.cos((angle * Math.PI) / 180) * radius * 1.36, top: 70 + Math.sin((angle * Math.PI) / 180) * radius };
   };
 
-  const updateName = (id: number, name: string) => {
-    setRows((current) => current.map((row) => (row.id === id ? { ...row, name } : row)));
-    setSubmitted(false);
-  };
+  return <main className="app-shell">
+    <aside className="side-nav" aria-label="主なメニュー">
+      <div className="brand"><div className="brand-mark">♪</div><div><p className="brand-eyebrow">令和8年度</p><p className="brand-name">音楽のつどい</p></div></div>
+      <nav className="nav-list"><button className="nav-item is-active"><span className="nav-icon">⌘</span> 舞台配置</button><button className="nav-item"><span className="nav-icon">◇</span> 団体情報</button><button className="nav-item"><span className="nav-icon">✓</span> 提出前チェック <span className="nav-dot" /></button></nav>
+      <div className="deadline-card"><span>提出締切</span><strong>10月11日（金）</strong><small>原本の様式に準拠</small></div><div className="nav-foot">お問い合わせ　›</div>
+    </aside>
 
-  return (
-    <main className="app-shell">
-      <aside className="side-nav" aria-label="主なメニュー">
-        <div className="brand">
-          <div className="brand-mark" aria-hidden="true">♪</div>
-          <div>
-            <p className="brand-eyebrow">令和8年度</p>
-            <p className="brand-name">音楽のつどい</p>
-          </div>
-        </div>
+    <section className="workspace">
+      <header className="topbar"><div className="crumbs">ホーム <span>／</span> 舞台配置</div><div className="account"><span className="school-avatar">高</span> 高南小学校 <span className="chevron">⌄</span></div></header>
+      <div className="content-wrap form-content">
+        <section className="page-heading"><div><p className="section-kicker">KOUNAN ELEMENTARY SCHOOL / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第61回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {saved ? "登録内容を保存しました" : "編集内容は自動保存されます"}</div></section>
 
-        <nav className="nav-list">
-          {navItems.map((item) => (
-            <button
-              className={`nav-item ${active === item.key ? "is-active" : ""}`}
-              key={item.key}
-              onClick={() => setActive(item.key)}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              {item.label}
-              {item.key === "check" && <span className="nav-dot" />}
-            </button>
-          ))}
-        </nav>
+        <section className="notice-card"><b>固定配置について</b><p>ピアノの位置・向き、ひな壇は会場の固定配置です。ひな壇は1段目6枚（椅子14脚）、2段目7枚（椅子16脚）として表示しています。</p></section>
 
-        <div className="deadline-card">
-          <span>提出締切</span>
-          <strong>9月20日（金）</strong>
-          <small>あと 14 日</small>
-        </div>
-        <div className="nav-foot">お問い合わせ　›</div>
-      </aside>
+        <section className="request-summary">
+          <div><span>学校名</span><strong>高南小学校</strong></div><div><span>出演人数</span><strong>{players.length}名</strong></div><div><span>舞台サイズ</span><strong>幅15m × 奥行12m</strong></div><div><span>演目</span><strong>吹奏楽</strong></div>
+        </section>
 
-      <section className="workspace">
-        <header className="topbar">
-          <div className="crumbs">ホーム <span>／</span> 舞台配置</div>
-          <div className="account"><span className="school-avatar">高</span> 高南小学校 <span className="chevron">⌄</span></div>
-        </header>
-
-        <div className="content-wrap">
-          <section className="page-heading">
-            <div>
-              <p className="section-kicker">STAGE LAYOUT</p>
-              <h1>舞台配置をつくる</h1>
-              <p className="lead">児童の位置や楽器を、舞台図を見ながら登録できます。</p>
+        <div className="layout-grid detailed-grid">
+          <section className="stage-card detailed-stage-card">
+            <div className="card-head"><div><p className="mini-label">STAGE LAYOUT</p><h2>舞台配置図 <span className="view-hint">（客席側から見た図）</span></h2></div><label className="fan-toggle"><input type="checkbox" checked={fanLayout} onChange={(e) => { setFanLayout(e.target.checked); setSaved(false); }} /><span />扇状に配置</label></div>
+            <div className="stage-legend"><span><i className="legend-coral" />演奏者 {players.length}名</span><span><i className="legend-navy" />固定備品</span><span><i className="legend-power" />電源使用</span><span>オブジェクトをドラッグして配置</span></div>
+            <div className="stage-outline"><div className="stage-dimension top">奥行 12m</div><div className="stage-dimension bottom">幅 15m</div><div className="curtain left" /><div className="curtain right" />
+              <div className="stage-floor large-floor" ref={stageRef} onPointerMove={moveObject} onPointerUp={() => setDraggingId(null)} onPointerLeave={() => setDraggingId(null)}>
+                <div className="fixed-piano"><span>固定</span><b>PIANO</b></div>
+                <div className="riser riser-top"><b>ひな壇 2段目</b><span>椅子 16</span>{Array.from({ length: 7 }).map((_, i) => <i key={i} />)}</div>
+                <div className="riser riser-low"><b>ひな壇 1段目</b><span>椅子 14</span>{Array.from({ length: 6 }).map((_, i) => <i key={i} />)}</div>
+                {!usePiano && <div className="unused-label">ピアノ 不使用</div>}
+                {players.map((player, index) => { const pos = playerPosition(index); return <span className="player-dot" style={{ left: `${pos.left}%`, top: `${pos.top}%` }} key={`${player.label}-${index}`}>{player.label}</span>; })}
+                {usePodium && <span className="podium">指揮台</span>}
+                {useMusicStand && <span className="conductor-stand">譜面台</span>}
+                {objects.map((item) => <button key={item.id} className={`stage-object ${item.kind} ${selectedId === item.id ? "is-selected" : ""}`} style={{ left: `${item.x}%`, top: `${item.y}%` }} onClick={() => setSelectedId(item.id)} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingId(item.id); setSelectedId(item.id); }} aria-label={`${item.label}を移動`}><span>{item.label}</span>{item.power && <em>⚡</em>}</button>)}
+                <div className="audience">客　席</div>
+              </div>
             </div>
-            <div className="saved-state"><span /> 下書き保存済み　<time>10:42</time></div>
+            {selectedId !== null && <div className="object-editor"><b>選択中の配置物</b><span>{objects.find((item) => item.id === selectedId)?.label}</span><label><input type="checkbox" checked={objects.find((item) => item.id === selectedId)?.power ?? false} onChange={(e) => setObjects((now) => now.map((item) => item.id === selectedId ? { ...item, power: e.target.checked } : item))} />電源を使用</label><button onClick={() => { setObjects((now) => now.filter((item) => item.id !== selectedId)); setSelectedId(null); }}>削除</button></div>}
           </section>
 
-          {active === "arrangement" && (
-            <>
-              <section className="event-strip">
-                <div className="event-num">演奏<br /><strong>03</strong></div>
-                <div><span>午前の部　10:20〜10:28</span><h2>高南小学校　4年生</h2></div>
-                <div className="event-meta"><span>合唱</span><b>曲目　心をひとつに</b></div>
-              </section>
-
-              <div className="layout-grid">
-                <section className="stage-card">
-                  <div className="card-head">
-                    <div><p className="mini-label">STAGE PREVIEW</p><h2>舞台図</h2></div>
-                    <button className="text-button">全体表示　⌖</button>
-                  </div>
-                  <div className="stage-legend"><span><i className="legend-coral" />児童</span><span><i className="legend-navy" />引率者</span><span><i className="legend-outline" />設備</span></div>
-                  <div className="stage-wrap">
-                    <div className="stage-label">客　席</div>
-                    <div className="stage-floor" aria-label="舞台配置プレビュー">
-                      <div className="stage-back">舞　台</div>
-                      <div className="piano" aria-label="ピアノ"><span>PIANO</span></div>
-                      {hasConductor && <div className="conductor" aria-label="指揮者"><span>指揮</span></div>}
-                      {rows.map((row, index) => (
-                        <div
-                          className={`people row-${index + 1} ${row.tone} ${selectedRow === row.id ? "is-selected" : ""}`}
-                          key={row.id}
-                          onClick={() => setSelectedRow(row.id)}
-                          role="button"
-                          tabIndex={0}
-                          aria-label={`${row.name}、${row.count}人を選択`}
-                          onKeyDown={(event) => event.key === "Enter" && setSelectedRow(row.id)}
-                        >
-                          {Array.from({ length: Math.min(row.count, 20) }).map((_, person) => <i key={person} />)}
-                          {row.count > 20 && <em>+{row.count - 20}</em>}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="audience-note">客席側から見た図</div>
-                  </div>
-                  <div className="stage-caption">● を選択すると、右側の人数・列名を編集できます。</div>
-                </section>
-
-                <section className="control-panel">
-                  <div className="panel-head"><div><p className="mini-label">ARRANGEMENT</p><h2>出演者の配置</h2></div><button className="help" aria-label="使い方">?</button></div>
-                  <div className="total-card"><div><span>ステージ上の人数</span><strong>{studentCount}<small>人</small></strong></div><div className="total-sub"><span>児童</span><b>{studentCount}人</b><span>引率</span><b>2人</b></div></div>
-                  <div className="row-list">
-                    {rows.map((row) => (
-                      <div className={`setting-row ${selectedRow === row.id ? "is-selected" : ""}`} key={row.id}>
-                        <button className={`row-color ${row.tone}`} onClick={() => setSelectedRow(row.id)} aria-label={`${row.name}を選択`} />
-                        <input value={row.name} onChange={(event) => updateName(row.id, event.target.value)} aria-label="列の名前" />
-                        <div className="counter"><button onClick={() => adjustRow(row.id, -1)} aria-label={`${row.name}を1人減らす`}>−</button><strong>{row.count}</strong><button onClick={() => adjustRow(row.id, 1)} aria-label={`${row.name}を1人増やす`}>＋</button></div>
-                      </div>
-                    ))}
-                  </div>
-                  <button className="add-row" onClick={() => setRows((current) => [...current, { id: Date.now(), name: "新しい列", count: 0, tone: "sky" }])}>＋　列を追加</button>
-                  <div className="equipment"><h3>設備・配置物</h3><label><input type="checkbox" checked={hasPiano} onChange={(event) => setHasPiano(event.target.checked)} /> <span className="fake-checkbox" />ピアノを使用する</label><label><input type="checkbox" checked={hasConductor} onChange={(event) => setHasConductor(event.target.checked)} /> <span className="fake-checkbox" />指揮者を配置する</label></div>
-                </section>
-              </div>
-
-              <section className="bottom-card">
-                <div><p className="mini-label">NEXT STEP</p><h2>この配置で登録しますか？</h2><p>提出後も締切日までは編集できます。</p></div>
-                <button className={`submit-button ${submitted ? "is-done" : ""}`} onClick={() => setSubmitted(true)}>{submitted ? "✓　登録しました" : "配置を登録する　→"}</button>
-              </section>
-            </>
-          )}
-
-          {active === "details" && <section className="empty-state"><span>◇</span><h2>団体情報</h2><p>学校名、学年、曲目、担当者の情報を確認・編集できます。</p><button onClick={() => setActive("arrangement")}>舞台配置へ戻る</button></section>}
-          {active === "check" && <section className="empty-state"><span>✓</span><h2>提出前チェック</h2><p>舞台配置・人数・設備の登録内容を確認します。</p><button onClick={() => setActive("arrangement")}>舞台配置を確認する</button></section>}
+          <section className="control-panel comprehensive-panel">
+            <div className="panel-head"><div><p className="mini-label">EQUIPMENT & DELIVERY</p><h2>申請内容</h2></div><span className="form-no">様式 1104</span></div>
+            <section className="form-section"><h3>搬入・電源</h3><div className="choice-line"><span>車での搬入</span><div className="segmented">{(["有", "無"] as const).map((value) => <button className={carDelivery === value ? "is-active" : ""} key={value} onClick={() => { setCarDelivery(value); setSaved(false); }}>{value}</button>)}</div></div><label className="switch-line"><input type="checkbox" checked={usePower} onChange={(e) => { setUsePower(e.target.checked); setSaved(false); }} /><span />電源（コンセント）を使用する</label>{usePower && <p className="power-note">使用する楽器を選び、舞台図上の対象オブジェクトで「電源を使用」をONにしてください。</p>}</section>
+            <section className="form-section"><h3>利用備品</h3><label className="switch-line"><input type="checkbox" checked={usePiano} onChange={(e) => setUsePiano(e.target.checked)} /><span />ピアノを使用する <small>（位置固定）</small></label><label className="switch-line"><input type="checkbox" checked={usePodium} onChange={(e) => setUsePodium(e.target.checked)} /><span />指揮台を使用する</label><label className="switch-line"><input type="checkbox" checked={useMusicStand} onChange={(e) => setUseMusicStand(e.target.checked)} /><span />指揮者譜面台を使用する</label></section>
+            <section className="form-section count-section"><h3>数量</h3><Count label="マイク" suffix="本（ワイヤレス）" value={counts.microphones} onChange={(v) => changeCount("microphones", v)} /><Count label="マイクスタンド" suffix="本" value={counts.micStands} onChange={(v) => changeCount("micStands", v)} /><Count label="演奏者椅子" suffix="脚（最大60）" value={counts.playerChairs} max={60} onChange={(v) => changeCount("playerChairs", v)} /><Count label="折りたたみ椅子" suffix="脚（最大50）" value={counts.foldingChairs} max={50} onChange={(v) => changeCount("foldingChairs", v)} /></section>
+          </section>
         </div>
-      </section>
-    </main>
-  );
+
+        <section className="equipment-workspace">
+          <div className="equipment-heading"><div><p className="mini-label">LOAD-IN & OBJECT PALETTE</p><h2>搬入物を選び、舞台へ配置</h2><p>選択した楽器は、下のパレットから舞台図へ追加して配置できます。</p></div><div className="chosen-count">選択中 <b>{loading.length}</b> 件</div></div>
+          <div className="loading-options">{loadingOptions.map((item) => <button key={item} className={loading.includes(item) ? "is-selected" : ""} onClick={() => toggleLoading(item)}>{loading.includes(item) ? "✓" : "＋"} {item}</button>)}</div>
+          <div className="object-palette"><div className="palette-label">舞台に追加</div>{palette.filter((item) => loading.includes(item) || ["ティンパニ", "ドラムセット", "バスドラム", "シロフォン", "ビブラフォン", "グロッケン"].includes(item)).map((item) => <button key={item} onClick={() => addObject(item)}><span className="palette-icon">＋</span>{item}</button>)}<button onClick={() => addObject("譜面台", "stand")}><span className="palette-icon">＋</span>譜面台</button><button onClick={() => addObject("椅子", "chair")}><span className="palette-icon">＋</span>椅子</button></div>
+        </section>
+
+        <section className="notes-card"><div><p className="mini-label">REQUESTS FOR SETUP STAFF</p><h2>その他・設営担当への要望</h2><p>必要な電源、大きな楽器の移動補助などを記入してください。</p></div><textarea defaultValue="バスオルガンを使用しないことになったため、電源使用もなしとなりました。配置図の「★」は譜面台を置く予定の椅子です。譜面台はこちらで持参いたします。" onChange={() => setSaved(false)} /></section>
+        <section className="bottom-card"><div><p className="mini-label">SUBMIT</p><h2>この内容で舞台配置を登録しますか？</h2><p>締切日までは、何度でも編集・再登録できます。</p></div><button className={`submit-button ${saved ? "is-done" : ""}`} onClick={() => setSaved(true)}>{saved ? "✓　登録内容を保存しました" : "舞台配置を登録する　→"}</button></section>
+      </div>
+    </section>
+  </main>;
+}
+
+function Count({ label, suffix, value, max, onChange }: { label: string; suffix: string; value: number; max?: number; onChange: (value: number) => void }) {
+  return <label className="count-input"><span>{label}</span><button onClick={() => onChange(value - 1)} type="button">−</button><input type="number" value={value} min="0" max={max} onChange={(e) => onChange(Number(e.target.value))} /><button onClick={() => onChange(value + 1)} type="button">＋</button><small>{suffix}</small></label>;
 }
