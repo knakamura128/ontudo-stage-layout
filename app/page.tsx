@@ -15,6 +15,10 @@ export default function Home() {
   const stageRef = useRef<HTMLDivElement>(null);
   const [fanLayout, setFanLayout] = useState(true);
   const [carDelivery, setCarDelivery] = useState<"有" | "無">("無");
+  const [deliveryDate, setDeliveryDate] = useState("当日（11/14 10時〜）");
+  const [soundVideo, setSoundVideo] = useState<"あり" | "なし">("なし");
+  const [soundCue, setSoundCue] = useState<"あり" | "なし">("なし");
+  const [media, setMedia] = useState<string[]>([]);
   const [usePower, setUsePower] = useState(false);
   const [usePiano, setUsePiano] = useState(true);
   const [usePodium, setUsePodium] = useState(false);
@@ -54,10 +58,10 @@ export default function Home() {
     const row = Math.floor(position / 16);
     const inRow = position % 16;
     const rowSize = Math.min(16, players.length - row * 16);
-    if (!fanLayout) return { left: 18 + inRow * (64 / Math.max(1, rowSize - 1)), top: 18 + row * 15 };
+    if (!fanLayout) return { left: Number((18 + inRow * (64 / Math.max(1, rowSize - 1))).toFixed(3)), top: 18 + row * 15 };
     const angle = 198 + inRow * (144 / Math.max(1, rowSize - 1));
     const radius = 29 - row * 5.5;
-    return { left: 50 + Math.cos((angle * Math.PI) / 180) * radius * 1.36, top: 70 + Math.sin((angle * Math.PI) / 180) * radius };
+    return { left: Number((50 + Math.cos((angle * Math.PI) / 180) * radius * 1.36).toFixed(3)), top: Number((70 + Math.sin((angle * Math.PI) / 180) * radius).toFixed(3)) };
   };
 
   return <main className="app-shell">
@@ -112,6 +116,14 @@ export default function Home() {
           <div className="object-palette"><div className="palette-label">舞台に追加</div>{palette.filter((item) => loading.includes(item) || ["ティンパニ", "ドラムセット", "バスドラム", "シロフォン", "ビブラフォン", "グロッケン"].includes(item)).map((item) => <button key={item} onClick={() => addObject(item)}><span className="palette-icon">＋</span>{item}</button>)}<button onClick={() => addObject("譜面台", "stand")}><span className="palette-icon">＋</span>譜面台</button><button onClick={() => addObject("椅子", "chair")}><span className="palette-icon">＋</span>椅子</button></div>
         </section>
 
+        <section className="application-card">
+          <div className="application-head"><div><p className="mini-label">APPLICATION FORM / 1)-3)</p><h2>舞台使用機器・搬出入等申請</h2><p>申請書の入力項目を、舞台配置と同じ画面で管理します。</p></div><span>提出期限　<strong>10月16日（金）</strong></span></div>
+          <div className="application-grid">
+            <section className="application-section"><div className="application-number">1</div><div className="application-body"><h3>車での搬入出</h3><div className="field-row"><Field label="搬入出" type="select" value={carDelivery === "有" ? "あり" : "なし"} options={["あり", "なし"]} onChange={(value) => { setCarDelivery(value === "あり" ? "有" : "無"); setSaved(false); }} /><Field label="搬入希望日" type="select" value={deliveryDate} options={["前日（11/13 18時〜19時）", "当日（11/14 10時〜）"]} onChange={(value) => { setDeliveryDate(value); setSaved(false); }} /></div><Field label="搬入物" type="text" placeholder="例：ティンパニ、ドラムセット、管楽器" onChange={() => setSaved(false)} /><div className="field-row"><Field label="車両責任者氏名" type="text" placeholder="氏名を入力" onChange={() => setSaved(false)} /><Field label="連絡先" type="text" placeholder="電話番号を入力" onChange={() => setSaved(false)} /></div><div className="field-row"><Field label="車種（車高3m未満）" type="text" placeholder="例：ワゴン車" onChange={() => setSaved(false)} /><Field label="台数" type="number" suffix="台" onChange={() => setSaved(false)} /></div></div></section>
+            <section className="application-section"><div className="application-number">3</div><div className="application-body"><h3>音響・映像備品</h3><div className="field-row"><Field label="音響・映像備品の利用" type="select" value={soundVideo} options={["あり", "なし"]} onChange={(value) => { setSoundVideo(value as "あり" | "なし"); setSaved(false); }} /><Field label="演者から音響への音出し指示" type="select" value={soundCue} options={["あり", "なし"]} onChange={(value) => { setSoundCue(value as "あり" | "なし"); setSaved(false); }} /></div><div className="field-row"><Field label="音楽データ形式" type="text" placeholder="MP3、WAV、CD-DA" onChange={() => setSaved(false)} /><Field label="映像データ形式" type="text" placeholder="mp4、AVCHD" onChange={() => setSaved(false)} /></div><div className="media-field"><span>記録媒体</span><div>{["USB", "SD", "SDHC", "SDXC", "CD-R", "CD-RW", "BD", "DVD"].map((item) => <button className={media.includes(item) ? "is-selected" : ""} key={item} onClick={() => { setMedia((now) => now.includes(item) ? now.filter((current) => current !== item) : [...now, item]); setSaved(false); }}>{media.includes(item) ? "✓ " : ""}{item}</button>)}</div></div><p className="cable-note">電源が必要な機器の場合は、必ず電源ケーブルを持参してください。</p></div></section>
+          </div>
+        </section>
+
         <section className="notes-card"><div><p className="mini-label">REQUESTS FOR SETUP STAFF</p><h2>その他・設営担当への要望</h2><p>必要な電源、大きな楽器の移動補助などを記入してください。</p></div><textarea defaultValue="バスオルガンを使用しないことになったため、電源使用もなしとなりました。配置図の「★」は譜面台を置く予定の椅子です。譜面台はこちらで持参いたします。" onChange={() => setSaved(false)} /></section>
         <section className="bottom-card"><div><p className="mini-label">SUBMIT</p><h2>この内容で舞台配置を登録しますか？</h2><p>締切日までは、何度でも編集・再登録できます。</p></div><button className={`submit-button ${saved ? "is-done" : ""}`} onClick={() => setSaved(true)}>{saved ? "✓　登録内容を保存しました" : "舞台配置を登録する　→"}</button></section>
       </div>
@@ -121,4 +133,8 @@ export default function Home() {
 
 function Count({ label, suffix, value, max, onChange }: { label: string; suffix: string; value: number; max?: number; onChange: (value: number) => void }) {
   return <label className="count-input"><span>{label}</span><button onClick={() => onChange(value - 1)} type="button">−</button><input type="number" value={value} min="0" max={max} onChange={(e) => onChange(Number(e.target.value))} /><button onClick={() => onChange(value + 1)} type="button">＋</button><small>{suffix}</small></label>;
+}
+
+function Field({ label, type, value, options, placeholder, suffix, onChange }: { label: string; type: "text" | "number" | "select"; value?: string; options?: string[]; placeholder?: string; suffix?: string; onChange: (value: string) => void }) {
+  return <label className="application-field"><span>{label}</span>{type === "select" ? <select value={value} onChange={(event) => onChange(event.target.value)}>{options?.map((option) => <option key={option}>{option}</option>)}</select> : <div><input type={type} placeholder={placeholder} min="0" onChange={(event) => onChange(event.target.value)} />{suffix && <small>{suffix}</small>}</div>}</label>;
 }
