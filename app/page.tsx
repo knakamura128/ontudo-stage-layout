@@ -75,13 +75,27 @@ export default function Home() {
     updateLayout((now) => ({ ...now, objects: now.objects.map((item) => item.id === draggingId ? { ...item, x, y } : item) }));
   };
   const playerPosition = (position: number) => {
-    const row = Math.floor(position / 16);
-    const inRow = position % 16;
-    const rowSize = Math.min(16, players.length - row * 16);
-    if (!fanLayout) return { left: Number((18 + inRow * (64 / Math.max(1, rowSize - 1))).toFixed(3)), top: 18 + row * 15 };
-    const angle = 198 + inRow * (144 / Math.max(1, rowSize - 1));
-    const radius = 29 - row * 5.5;
-    return { left: Number((50 + Math.cos((angle * Math.PI) / 180) * radius * 1.36).toFixed(3)), top: Number((70 + Math.sin((angle * Math.PI) / 180) * radius).toFixed(3)) };
+    const riserUpperCount = 16;
+    const riserLowerCount = 14;
+    const riserCount = riserUpperCount + riserLowerCount;
+
+    // ひな壇上の演奏者は、扇状配置の切替に関わらず直線配置に保つ。
+    if (position < riserUpperCount) return { left: Number((22 + position * (56 / (riserUpperCount - 1))).toFixed(3)), top: 13 };
+    if (position < riserCount) {
+      const lowerIndex = position - riserUpperCount;
+      return { left: Number((27 + lowerIndex * (47 / (riserLowerCount - 1))).toFixed(3)), top: 29 };
+    }
+
+    const outsideIndex = position - riserCount;
+    const outsideCount = players.length - riserCount;
+    const row = Math.floor(outsideIndex / 16);
+    const inRow = outsideIndex % 16;
+    const rowSize = Math.min(16, outsideCount - row * 16);
+    if (!fanLayout) return { left: Number((23 + inRow * (54 / Math.max(1, rowSize - 1))).toFixed(3)), top: 52 + row * 18 };
+
+    const angle = 202 + inRow * (136 / Math.max(1, rowSize - 1));
+    const radius = 29 - row * 7;
+    return { left: Number((50 + Math.cos((angle * Math.PI) / 180) * radius * 1.28).toFixed(3)), top: Number((82 + Math.sin((angle * Math.PI) / 180) * radius).toFixed(3)) };
   };
 
   return <main className="app-shell">
@@ -110,8 +124,8 @@ export default function Home() {
 
         <div className="layout-grid detailed-grid">
           <section className="stage-card detailed-stage-card">
-            <div className="card-head"><div><p className="mini-label">STAGE LAYOUT / {layoutMode === "program" ? `PROGRAM ${activeProgram + 1}` : "COMMON"}</p><h2>舞台配置図 <span className="view-hint">（{layoutMode === "program" ? programs[activeProgram] : "共通配置"}）</span></h2></div><label className="fan-toggle"><input type="checkbox" checked={fanLayout} onChange={(e) => { updateLayout((now) => ({ ...now, fanLayout: e.target.checked })); setSaved(false); }} /><span />演奏者を扇状に配置</label></div>
-            <div className="stage-legend"><span><i className="legend-coral" />演奏者 {players.length}名</span><span><i className="legend-navy" />固定備品</span><span><i className="legend-power" />電源使用</span><span>オブジェクトをドラッグして配置</span></div>
+            <div className="card-head"><div><p className="mini-label">STAGE LAYOUT / {layoutMode === "program" ? `PROGRAM ${activeProgram + 1}` : "COMMON"}</p><h2>舞台配置図 <span className="view-hint">（{layoutMode === "program" ? programs[activeProgram] : "共通配置"}）</span></h2></div><label className="fan-toggle"><input type="checkbox" checked={fanLayout} onChange={(e) => { updateLayout((now) => ({ ...now, fanLayout: e.target.checked })); setSaved(false); }} /><span />ひな壇以外を扇状に配置</label></div>
+            <div className="stage-legend"><span><i className="legend-coral" />演奏者 {players.length}名</span><span><i className="legend-navy" />固定備品</span><span><i className="legend-power" />電源使用</span><span>ひな壇上は直線固定</span><span>オブジェクトをドラッグして配置</span></div>
             <div className="stage-outline"><div className="stage-dimension top">奥行 12m</div><div className="stage-dimension bottom">幅 15m</div><div className="curtain left" /><div className="curtain right" />
               <div className="stage-floor large-floor" ref={stageRef} onPointerMove={moveObject} onPointerUp={() => setDraggingId(null)} onPointerLeave={() => setDraggingId(null)}>
                 <div className="fixed-piano"><span>🎹 固定</span><b>PIANO</b></div>
