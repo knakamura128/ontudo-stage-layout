@@ -83,7 +83,12 @@ button{cursor:pointer}
 .riser b,.riser span{position:absolute;left:5px;font-size:8px;color:#477a94;z-index:2}
 .riser b{top:5px}
 .riser span{bottom:4px}
-.player-dot{position:absolute;z-index:3;transform:translate(-50%,-50%);width:25px;height:25px;padding:0;border-radius:50%;border:1.5px solid #3973a7;background:#fffdfa;color:#2d5b85;display:grid;place-items:center;font-size:7px;font-weight:700;box-shadow:0 1px 2px #33546a37;cursor:grab;touch-action:none}
+.player-dot{position:absolute;z-index:3;transform:translate(-50%,-50%);min-width:36px;height:27px;padding:2px 3px 2px 15px;border:1.5px solid #3973a7;border-radius:4px;background:#fffdfa;color:#2d5b85;display:grid;place-items:center;font-size:7px;font-weight:700;box-shadow:0 1px 2px #33546a37;cursor:grab;touch-action:none}
+.player-dot:before{content:"🪑";position:absolute;left:2px;font-size:11px;line-height:1}
+.player-dot.player{background:#fffdfa;border-color:#3973a7}
+.player-dot.folding{background:#f3f7fb;border-style:dashed;border-color:#6087a3}
+.player-dot.folding:before{content:"▱";font-size:17px;line-height:.7;color:#4d728e}
+.player-dot span{max-width:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .player-dot:active{cursor:grabbing}
 .podium{position:absolute;z-index:5;left:49%;bottom:7%;transform:translateX(-50%);background:#2e895b;color:white;padding:10px 15px;border:1px solid #14603a;font-size:9px}
 .conductor-stand{position:absolute;z-index:5;left:56%;bottom:7%;width:30px;height:25px;border:2px solid #395976;background:white;color:#395976;font-size:7px;display:grid;place-items:center}
@@ -109,6 +114,9 @@ button{cursor:pointer}
 .player-editor input{height:28px;width:142px;border:1px solid #cddadd;border-radius:4px;background:#fff;padding:0 8px;color:#385368;font-size:11px}
 .player-editor button{height:28px;border:1px solid #5c899d;border-radius:4px;background:#40758a;color:#fff;padding:0 11px;font-size:11px;font-weight:700}
 .player-editor small{color:#7b8a92;font-size:10px}
+.seat-picker{display:flex;gap:4px}
+.seat-picker button{border:1px solid #c7d6dc;background:#fff;color:#547080;padding:0 7px;font-size:10px}
+.seat-picker button.is-active{border-color:#4b8297;background:#e7f3f5;color:#2d6477}
 .control-panel{padding:22px}
 .form-no{color:#83919b;font-size:10px;padding:4px 7px;border:1px solid #d8e0e1;border-radius:99px}
 .form-section{padding:17px 0;border-bottom:1px solid var(--line)}
