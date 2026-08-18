@@ -3,7 +3,8 @@
 import { PointerEvent, useMemo, useRef, useState } from "react";
 
 type StageObject = { id: number; label: string; icon: string; kind: "instrument" | "stand" | "chair"; x: number; y: number; power: boolean };
-type ProgramLayout = { fanLayout: boolean; objects: StageObject[] };
+type StagePoint = { left: number; top: number };
+type ProgramLayout = { fanLayout: boolean; objects: StageObject[]; playerPositions: Record<number, StagePoint> };
 
 const playerGroups = [
   ["Tp", 16], ["Tb", 6], ["Hr", 6], ["Euph", 4], ["Cl", 13], ["Fl", 6], ["A.Sax", 4], ["B.Sax", 3], ["Tub", 3],
@@ -28,9 +29,9 @@ export default function Home() {
   const [programs, setPrograms] = useState(["吹奏楽：心をひとつに", "合奏：風のシンフォニー", "フィナーレ"]);
   const [activeProgram, setActiveProgram] = useState(0);
   const [layouts, setLayouts] = useState<Record<number, ProgramLayout>>({
-    0: { fanLayout: true, objects: initialObjects },
-    1: { fanLayout: false, objects: [] },
-    2: { fanLayout: false, objects: [] },
+    0: { fanLayout: true, objects: initialObjects, playerPositions: {} },
+    1: { fanLayout: false, objects: [], playerPositions: {} },
+    2: { fanLayout: false, objects: [], playerPositions: {} },
   });
   const [carDelivery, setCarDelivery] = useState<"有" | "無">("無");
   const [deliveryDate, setDeliveryDate] = useState("当日（11/14 10時〜）");
@@ -42,6 +43,7 @@ export default function Home() {
   const [loading, setLoading] = useState<string[]>(["管楽器"]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [draggingPlayerIndex, setDraggingPlayerIndex] = useState<number | null>(null);
   const [counts, setCounts] = useState({ microphones: 0, micStands: 0, playerChairs: 60, foldingChairs: 14 });
   const [saved, setSaved] = useState(false);
 
@@ -75,11 +77,12 @@ export default function Home() {
     setSaved(false);
   };
   const moveObject = (event: PointerEvent<HTMLElement>) => {
-    if (draggingId === null || !stageRef.current) return;
+    if ((draggingId === null && draggingPlayerIndex === null) || !stageRef.current) return;
     const bounds = stageRef.current.getBoundingClientRect();
     const x = Math.min(94, Math.max(6, ((event.clientX - bounds.left) / bounds.width) * 100));
     const y = Math.min(90, Math.max(8, ((event.clientY - bounds.top) / bounds.height) * 100));
-    updateLayout((now) => ({ ...now, objects: now.objects.map((item) => item.id === draggingId ? { ...item, x, y } : item) }));
+    if (draggingId !== null) updateLayout((now) => ({ ...now, objects: now.objects.map((item) => item.id === draggingId ? { ...item, x, y } : item) }));
+    if (draggingPlayerIndex !== null) updateLayout((now) => ({ ...now, playerPositions: { ...now.playerPositions, [draggingPlayerIndex]: { left: x, top: y } } }));
   };
   const playerPosition = (position: number) => {
     const riserUpperCount = 16;
@@ -126,21 +129,21 @@ export default function Home() {
         <section className="program-card">
           <div className="program-card-head"><div><p className="mini-label">PROGRAM LAYOUTS</p><h2>演目ごとの舞台配置</h2><p>演目によって配置が変わる場合は、それぞれのタブで舞台図を編集します。</p></div><div className="layout-mode"><button className={layoutMode === "common" ? "is-active" : ""} onClick={() => { setLayoutMode("common"); setActiveProgram(0); setSelectedId(null); }}>共通配置</button><button className={layoutMode === "program" ? "is-active" : ""} onClick={() => setLayoutMode("program")}>演目ごと</button></div></div>
           <div className="program-inputs">{programs.map((program, index) => <label key={index}><span>演目 {index + 1}</span><input value={program} onChange={(event) => { setPrograms((now) => now.map((item, current) => current === index ? event.target.value : item)); setSaved(false); }} /></label>)}</div>
-          {layoutMode === "program" ? <div className="program-tabs">{programs.map((program, index) => <button key={index} className={activeProgram === index ? "is-active" : ""} onClick={() => { setActiveProgram(index); setSelectedId(null); }}>{program || `演目 ${index + 1}`}</button>)}<button className="copy-layout" onClick={() => { const next = (activeProgram + 1) % programs.length; setLayouts((now) => ({ ...now, [next]: { fanLayout: activeLayout.fanLayout, objects: activeLayout.objects.map((item, index) => ({ ...item, id: Date.now() + index })) } })); setActiveProgram(next); setSelectedId(null); setSaved(false); }}>この配置を次の演目へコピー　→</button></div> : <div className="program-note">舞台配置図は1つです。作成した配置をすべての演目で共通して使用します。</div>}
+          {layoutMode === "program" ? <div className="program-tabs">{programs.map((program, index) => <button key={index} className={activeProgram === index ? "is-active" : ""} onClick={() => { setActiveProgram(index); setSelectedId(null); }}>{program || `演目 ${index + 1}`}</button>)}<button className="copy-layout" onClick={() => { const next = (activeProgram + 1) % programs.length; setLayouts((now) => ({ ...now, [next]: { fanLayout: activeLayout.fanLayout, objects: activeLayout.objects.map((item, index) => ({ ...item, id: Date.now() + index })), playerPositions: { ...activeLayout.playerPositions } } })); setActiveProgram(next); setSelectedId(null); setSaved(false); }}>この配置を次の演目へコピー　→</button></div> : <div className="program-note">舞台配置図は1つです。作成した配置をすべての演目で共通して使用します。</div>}
         </section>
 
         <div className="layout-grid detailed-grid">
           <section className="stage-card detailed-stage-card">
             <div className="card-head"><div><p className="mini-label">STAGE LAYOUT / {layoutMode === "program" ? `PROGRAM ${activeProgram + 1}` : "COMMON"}</p><h2>舞台配置図 <span className="view-hint">（{layoutMode === "program" ? programs[activeProgram] : "共通配置"}）</span></h2></div><label className="fan-toggle"><input type="checkbox" checked={fanLayout} onChange={(e) => { updateLayout((now) => ({ ...now, fanLayout: e.target.checked })); setSaved(false); }} /><span />ひな壇以外を扇状に配置</label></div>
-            <div className="stage-legend"><span><i className="legend-coral" />演奏者 {players.length}名</span><span><i className="legend-navy" />固定備品</span><span><i className="legend-power" />電源使用</span><span>ひな壇上は直線固定</span><span>オブジェクトをドラッグして配置</span></div>
+            <div className="stage-legend"><span><i className="legend-coral" />演奏者 {players.length}名</span><span><i className="legend-navy" />固定備品</span><span><i className="legend-power" />電源使用</span><span>ひな壇上は直線固定</span><span>演奏者・備品をドラッグして配置</span></div>
             <div className="stage-outline"><div className="stage-dimension top">奥行 12m</div><div className="stage-dimension bottom">幅 15m</div><div className="curtain left" /><div className="curtain right" />
-              <div className="stage-floor large-floor" ref={stageRef} onPointerMove={moveObject} onPointerUp={() => setDraggingId(null)} onPointerLeave={() => setDraggingId(null)}>
+              <div className="stage-floor large-floor" ref={stageRef} onPointerMove={moveObject} onPointerUp={() => { setDraggingId(null); setDraggingPlayerIndex(null); }} onPointerLeave={() => { setDraggingId(null); setDraggingPlayerIndex(null); }}>
                 <div className="fixed-piano"><span>🎹 固定</span><b>PIANO</b></div>
                 <div className="riser riser-top"><b>ひな壇 2段目</b><span>椅子 16</span>{Array.from({ length: 7 }).map((_, i) => <i key={i} />)}</div>
                 <div className="riser riser-low"><b>ひな壇 1段目</b><span>椅子 14</span>{Array.from({ length: 6 }).map((_, i) => <i key={i} />)}</div>
                 {!usePiano && <div className="unused-label">ピアノ 不使用</div>}
-                {players.map((player, index) => { const pos = playerPosition(index); return <span className="player-dot" style={{ left: `${pos.left}%`, top: `${pos.top}%` }} key={`${player.label}-${index}`}>{player.label}</span>; })}
-                {objects.map((item) => <button key={item.id} className={`stage-object ${item.kind} ${selectedId === item.id ? "is-selected" : ""}`} style={{ left: `${item.x}%`, top: `${item.y}%` }} onClick={() => setSelectedId(item.id)} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingId(item.id); setSelectedId(item.id); }} aria-label={`${item.label}を移動`}><span className="stage-object-icon">{item.icon}</span><span>{item.label}</span>{item.power && <em>⚡</em>}</button>)}
+                {players.map((player, index) => { const pos = activeLayout.playerPositions[index] ?? playerPosition(index); return <button className="player-dot" style={{ left: `${pos.left}%`, top: `${pos.top}%` }} key={`${player.label}-${index}`} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingPlayerIndex(index); setDraggingId(null); setSaved(false); }} aria-label={`${player.label}の演奏者を移動`}>{player.label}</button>; })}
+                {objects.map((item) => <button key={item.id} className={`stage-object ${item.kind} ${selectedId === item.id ? "is-selected" : ""}`} style={{ left: `${item.x}%`, top: `${item.y}%` }} onClick={() => setSelectedId(item.id)} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingId(item.id); setDraggingPlayerIndex(null); setSelectedId(item.id); setSaved(false); }} aria-label={`${item.label}を移動`}><span className="stage-object-icon">{item.icon}</span><span>{item.label}</span>{item.power && <em>⚡</em>}</button>)}
                 <div className="audience">客　席</div>
               </div>
             </div>
