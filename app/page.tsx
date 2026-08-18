@@ -4,11 +4,12 @@ import { PointerEvent, useMemo, useRef, useState } from "react";
 
 type StageObject = { id: number; label: string; icon: string; kind: "instrument" | "stand" | "chair"; x: number; y: number; power: boolean };
 type StagePoint = { left: number; top: number };
-type ProgramLayout = { fanLayout: boolean; objects: StageObject[]; playerPositions: Record<number, StagePoint> };
+type ProgramLayout = { fanLayout: boolean; objects: StageObject[]; playerPositions: Record<number, StagePoint>; playerLabels: Record<number, string> };
 
 const playerGroups = [
   ["Tp", 12], ["Tb", 6], ["Hr", 6], ["Euph", 6], ["Cl", 13], ["Fl", 6], ["A.Sax", 4], ["B.Sax", 3], ["Tub", 3],
 ] as const;
+const blankPlayerLabels = () => Object.fromEntries(Array.from({ length: playerGroups.reduce((total, [, count]) => total + count, 0) }, (_, index) => [index, ""]));
 
 const loadingOptions = ["管楽器", "ティンパニ", "ドラムセット", "バスドラム", "シロフォン", "ビブラフォン", "グロッケン", "コンガ", "ボンゴ", "ウィンドチャイム", "サスペンドシンバル", "ウッドブロック", "パーカッション小物"];
 const palette = [
@@ -55,9 +56,9 @@ export default function Home() {
   const [programs, setPrograms] = useState(["吹奏楽：心をひとつに", "合奏：風のシンフォニー", "フィナーレ"]);
   const [activeProgram, setActiveProgram] = useState(0);
   const [layouts, setLayouts] = useState<Record<number, ProgramLayout>>({
-    0: { fanLayout: false, objects: initialObjects, playerPositions: initialPlayerPositions },
-    1: { fanLayout: false, objects: [], playerPositions: {} },
-    2: { fanLayout: false, objects: [], playerPositions: {} },
+    0: { fanLayout: false, objects: [], playerPositions: {}, playerLabels: blankPlayerLabels() },
+    1: { fanLayout: false, objects: [], playerPositions: {}, playerLabels: blankPlayerLabels() },
+    2: { fanLayout: false, objects: [], playerPositions: {}, playerLabels: blankPlayerLabels() },
   });
   const [carDelivery, setCarDelivery] = useState<"有" | "無">("無");
   const [deliveryDate, setDeliveryDate] = useState("当日（11/14 10時〜）");
@@ -70,7 +71,9 @@ export default function Home() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [draggingPlayerIndex, setDraggingPlayerIndex] = useState<number | null>(null);
-  const [counts, setCounts] = useState({ microphones: 0, micStands: 0, playerChairs: 74, foldingChairs: 0 });
+  const [selectedPlayerIndex, setSelectedPlayerIndex] = useState<number | null>(null);
+  const [newPlayerLabel, setNewPlayerLabel] = useState("");
+  const [counts, setCounts] = useState({ microphones: 0, micStands: 0, playerChairs: 0, foldingChairs: 0 });
   const [saved, setSaved] = useState(false);
 
   const layoutKey = layoutMode === "common" ? 0 : activeProgram;
@@ -80,6 +83,7 @@ export default function Home() {
   const updateLayout = (updater: (layout: ProgramLayout) => ProgramLayout) => setLayouts((now) => ({ ...now, [layoutKey]: updater(now[layoutKey]) }));
 
   const players = useMemo(() => playerGroups.flatMap(([label, count]) => Array.from({ length: count }, (_, index) => ({ label, index }))), []);
+  const placedPlayerCount = players.filter((_, index) => Boolean(activeLayout.playerLabels[index])).length;
 
   const changeCount = (key: keyof typeof counts, value: number) => {
     setCounts((now) => ({ ...now, [key]: Math.max(0, value) }));
@@ -96,6 +100,22 @@ export default function Home() {
         ? [...now.objects, { id: Date.now(), label, icon, kind, x: 50, y: 78, power: false }]
         : now.objects.filter((item) => item.label !== label),
     }));
+    setSaved(false);
+  };
+  const addPlayer = () => {
+    const label = newPlayerLabel.trim();
+    const index = players.findIndex((_, current) => !activeLayout.playerLabels[current]);
+    if (!label || index === -1) return;
+    updateLayout((now) => ({ ...now, playerLabels: { ...now.playerLabels, [index]: label } }));
+    setSelectedPlayerIndex(index);
+    setNewPlayerLabel("");
+    setSaved(false);
+  };
+  const clearStageLayout = () => {
+    if (!window.confirm("この演目の演奏者・備品の配置をすべてクリアしますか？")) return;
+    updateLayout((now) => ({ ...now, fanLayout: false, objects: [], playerPositions: {}, playerLabels: blankPlayerLabels() }));
+    setSelectedId(null);
+    setSelectedPlayerIndex(null);
     setSaved(false);
   };
   const toggleLoading = (label: string) => {
@@ -149,30 +169,32 @@ export default function Home() {
         <section className="notice-card"><b>固定配置について</b><p>ピアノの位置・向き、ひな壇は会場の固定配置です。演奏者・椅子・楽器などの配置物は、ドラッグで自由に調整できます。</p></section>
 
         <section className="request-summary">
-          <div><span>学校名</span><strong>高南小学校</strong></div><div><span>出演人数</span><strong>{players.length}名</strong></div><div><span>舞台サイズ</span><strong>幅15m × 奥行12m</strong></div><div><span>演目</span><strong>吹奏楽</strong></div>
+          <div><span>学校名</span><strong>高南小学校</strong></div><div><span>出演人数</span><strong>{placedPlayerCount}名</strong></div><div><span>舞台サイズ</span><strong>幅15m × 奥行12m</strong></div><div><span>演目</span><strong>吹奏楽</strong></div>
         </section>
 
         <section className="program-card">
-          <div className="program-card-head"><div><p className="mini-label">PROGRAM LAYOUTS</p><h2>演目ごとの舞台配置</h2><p>演目によって配置が変わる場合は、それぞれのタブで舞台図を編集します。</p></div><div className="layout-mode"><button className={layoutMode === "common" ? "is-active" : ""} onClick={() => { setLayoutMode("common"); setActiveProgram(0); setSelectedId(null); }}>共通配置</button><button className={layoutMode === "program" ? "is-active" : ""} onClick={() => setLayoutMode("program")}>演目ごと</button></div></div>
+          <div className="program-card-head"><div><p className="mini-label">PROGRAM LAYOUTS</p><h2>演目ごとの舞台配置</h2><p>演目によって配置が変わる場合は、それぞれのタブで舞台図を編集します。</p></div><div className="layout-mode"><button className={layoutMode === "common" ? "is-active" : ""} onClick={() => { setLayoutMode("common"); setActiveProgram(0); setSelectedId(null); setSelectedPlayerIndex(null); }}>共通配置</button><button className={layoutMode === "program" ? "is-active" : ""} onClick={() => setLayoutMode("program")}>演目ごと</button></div></div>
           <div className="program-inputs">{programs.map((program, index) => <label key={index}><span>演目 {index + 1}</span><input value={program} onChange={(event) => { setPrograms((now) => now.map((item, current) => current === index ? event.target.value : item)); setSaved(false); }} /></label>)}</div>
-          {layoutMode === "program" ? <div className="program-tabs">{programs.map((program, index) => <button key={index} className={activeProgram === index ? "is-active" : ""} onClick={() => { setActiveProgram(index); setSelectedId(null); }}>{program || `演目 ${index + 1}`}</button>)}<button className="copy-layout" onClick={() => { const next = (activeProgram + 1) % programs.length; setLayouts((now) => ({ ...now, [next]: { fanLayout: activeLayout.fanLayout, objects: activeLayout.objects.map((item, index) => ({ ...item, id: Date.now() + index })), playerPositions: { ...activeLayout.playerPositions } } })); setActiveProgram(next); setSelectedId(null); setSaved(false); }}>この配置を次の演目へコピー　→</button></div> : <div className="program-note">舞台配置図は1つです。作成した配置をすべての演目で共通して使用します。</div>}
+          {layoutMode === "program" ? <div className="program-tabs">{programs.map((program, index) => <button key={index} className={activeProgram === index ? "is-active" : ""} onClick={() => { setActiveProgram(index); setSelectedId(null); setSelectedPlayerIndex(null); }}>{program || `演目 ${index + 1}`}</button>)}<button className="copy-layout" onClick={() => { const next = (activeProgram + 1) % programs.length; setLayouts((now) => ({ ...now, [next]: { fanLayout: activeLayout.fanLayout, objects: activeLayout.objects.map((item, index) => ({ ...item, id: Date.now() + index })), playerPositions: { ...activeLayout.playerPositions }, playerLabels: { ...activeLayout.playerLabels } } })); setActiveProgram(next); setSelectedId(null); setSelectedPlayerIndex(null); setSaved(false); }}>この配置を次の演目へコピー　→</button></div> : <div className="program-note">舞台配置図は1つです。作成した配置をすべての演目で共通して使用します。</div>}
         </section>
 
         <div className="layout-grid detailed-grid">
           <section className="stage-card detailed-stage-card">
-            <div className="card-head"><div><p className="mini-label">STAGE LAYOUT / {layoutMode === "program" ? `PROGRAM ${activeProgram + 1}` : "COMMON"}</p><h2>舞台配置図 <span className="view-hint">（{layoutMode === "program" ? programs[activeProgram] : "共通配置"}）</span></h2></div><label className="fan-toggle"><input type="checkbox" checked={fanLayout} onChange={(e) => { updateLayout((now) => ({ ...now, fanLayout: e.target.checked })); setSaved(false); }} /><span />ひな壇以外を扇状に配置</label></div>
-            <div className="stage-legend"><span><i className="legend-coral" />演奏者 {players.length}名</span><span><i className="legend-navy" />固定備品</span><span><i className="legend-power" />電源使用</span><span>ひな壇上は直線固定</span><span>演奏者・備品をドラッグして配置</span><span>備品右上の × で削除</span></div>
+            <div className="card-head"><div><p className="mini-label">STAGE LAYOUT / {layoutMode === "program" ? `PROGRAM ${activeProgram + 1}` : "COMMON"}</p><h2>舞台配置図 <span className="view-hint">（{layoutMode === "program" ? programs[activeProgram] : "共通配置"}）</span></h2></div><div className="stage-actions"><button className="clear-layout" onClick={clearStageLayout}>配置図をすべてクリア</button><label className="fan-toggle"><input type="checkbox" checked={fanLayout} onChange={(e) => { updateLayout((now) => ({ ...now, fanLayout: e.target.checked })); setSaved(false); }} /><span />ひな壇以外を扇状に配置</label></div></div>
+            <div className="stage-legend"><span><i className="legend-coral" />演奏者 {placedPlayerCount}名</span><span><i className="legend-navy" />固定備品</span><span><i className="legend-power" />電源使用</span><span>ひな壇上は直線固定</span><span>演奏者・備品をドラッグして配置</span><span>備品右上の × で削除</span></div>
             <div className="stage-outline"><div className="stage-dimension top">奥行 12m</div><div className="stage-dimension bottom">幅 15m</div><div className="curtain left" /><div className="curtain right" />
               <div className="stage-floor large-floor" ref={stageRef} onPointerMove={moveObject} onPointerUp={() => { setDraggingId(null); setDraggingPlayerIndex(null); }} onPointerLeave={() => { setDraggingId(null); setDraggingPlayerIndex(null); }}>
                 <div className="fixed-piano"><span>🎹 固定</span><b>PIANO</b></div>
                 <div className="riser riser-top"><b>ひな壇 2段目</b><span>椅子 14</span>{Array.from({ length: 6 }).map((_, i) => <i key={i} />)}</div>
                 <div className="riser riser-low"><b>ひな壇 1段目</b><span>椅子 16</span>{Array.from({ length: 7 }).map((_, i) => <i key={i} />)}</div>
                 {!usePiano && <div className="unused-label">ピアノ 不使用</div>}
-                {players.map((player, index) => { const pos = activeLayout.playerPositions[index] ?? playerPosition(index); return <button className="player-dot" style={{ left: `${pos.left}%`, top: `${pos.top}%` }} key={`${player.label}-${index}`} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingPlayerIndex(index); setDraggingId(null); setSaved(false); }} aria-label={`${player.label}の演奏者を移動`}>{player.label}</button>; })}
+                {players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); return label ? <button className="player-dot" style={{ left: `${pos.left}%`, top: `${pos.top}%` }} key={`${player.label}-${index}`} onClick={() => { setSelectedPlayerIndex(index); setSelectedId(null); }} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingPlayerIndex(index); setDraggingId(null); setSaved(false); }} aria-label={`${label}の演奏者を移動`}>{label}</button> : null; })}
                 {objects.map((item) => <div key={item.id} className="stage-object-wrap" style={{ left: `${item.x}%`, top: `${item.y}%` }}><button className={`stage-object ${item.kind} ${selectedId === item.id ? "is-selected" : ""}`} onClick={() => setSelectedId(item.id)} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingId(item.id); setDraggingPlayerIndex(null); setSelectedId(item.id); setSaved(false); }} aria-label={`${item.label}を移動`}><span className="stage-object-icon">{item.icon}</span><span>{item.label}</span>{item.power && <em>⚡</em>}</button><button className="stage-object-delete" type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); updateLayout((now) => ({ ...now, objects: now.objects.filter((current) => current.id !== item.id) })); setSelectedId(null); setSaved(false); }} aria-label={`${item.label}を削除`} title={`${item.label}を削除`}>×</button></div>)}
                 <div className="audience">客　席</div>
               </div>
             </div>
+            <div className="player-editor"><label><span>演奏者を追加</span><input value={newPlayerLabel} onChange={(event) => setNewPlayerLabel(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addPlayer(); }} placeholder="例：Tp、Hr、Euph" maxLength={12} /></label><button onClick={addPlayer}>追加</button><small>任意の表記で追加後、舞台図上をドラッグして配置できます。</small></div>
+            {selectedPlayerIndex !== null && <div className="object-editor"><b>選択中の演奏者</b><input value={activeLayout.playerLabels[selectedPlayerIndex] ?? ""} onChange={(event) => { const label = event.target.value; updateLayout((now) => ({ ...now, playerLabels: { ...now.playerLabels, [selectedPlayerIndex]: label } })); setSaved(false); }} maxLength={12} aria-label="演奏者の表記" /><button onClick={() => { updateLayout((now) => { const playerLabels = { ...now.playerLabels, [selectedPlayerIndex]: "" }; const playerPositions = { ...now.playerPositions }; delete playerPositions[selectedPlayerIndex]; return { ...now, playerLabels, playerPositions }; }); setSelectedPlayerIndex(null); setSaved(false); }}>削除</button></div>}
             {selectedId !== null && <div className="object-editor"><b>選択中の配置物</b><span>{objects.find((item) => item.id === selectedId)?.icon} {objects.find((item) => item.id === selectedId)?.label}</span><label><input type="checkbox" checked={objects.find((item) => item.id === selectedId)?.power ?? false} onChange={(e) => updateLayout((now) => ({ ...now, objects: now.objects.map((item) => item.id === selectedId ? { ...item, power: e.target.checked } : item) }))} />電源を使用</label><button onClick={() => { updateLayout((now) => ({ ...now, objects: now.objects.filter((item) => item.id !== selectedId) })); setSelectedId(null); }}>削除</button></div>}
           </section>
 

@@ -55,6 +55,8 @@ button{cursor:pointer}
 .fan-toggle span:after{content:"";position:absolute;width:14px;height:14px;top:2px;left:2px;background:white;border-radius:50%;transition:.2s}
 .fan-toggle input:checked+span{background:#4d8798}
 .fan-toggle input:checked+span:after{left:15px}
+.stage-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+.clear-layout{border:1px solid #d8a29c;background:#fff5f3;color:#a64d43;border-radius:4px;padding:7px 9px;font-size:10px;font-weight:700}
 .stage-legend{display:flex;flex-wrap:wrap;gap:12px 17px;color:#7b8790;font-size:10px;margin:18px 0 12px}
 .stage-legend span{display:flex;align-items:center;gap:5px}
 .stage-legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
@@ -101,6 +103,12 @@ button{cursor:pointer}
 .object-editor b{color:#2f5761}
 .object-editor label{margin-left:auto}
 .object-editor button{border:0;background:transparent;color:#b1574a;font-size:11px}
+.object-editor>input{height:28px;min-width:120px;border:1px solid #cddadd;border-radius:4px;background:#fff;padding:0 8px;color:#385368;font-size:11px}
+.player-editor{margin-top:12px;padding:10px 11px;border:1px solid #d7e3e4;border-radius:5px;background:#f5f9f8;display:flex;align-items:center;gap:8px;color:#4d6572;font-size:11px}
+.player-editor label{display:flex;align-items:center;gap:8px;font-weight:700;color:#2f5761}
+.player-editor input{height:28px;width:142px;border:1px solid #cddadd;border-radius:4px;background:#fff;padding:0 8px;color:#385368;font-size:11px}
+.player-editor button{height:28px;border:1px solid #5c899d;border-radius:4px;background:#40758a;color:#fff;padding:0 11px;font-size:11px;font-weight:700}
+.player-editor small{color:#7b8a92;font-size:10px}
 .control-panel{padding:22px}
 .form-no{color:#83919b;font-size:10px;padding:4px 7px;border:1px solid #d8e0e1;border-radius:99px}
 .form-section{padding:17px 0;border-bottom:1px solid var(--line)}
@@ -175,7 +183,7 @@ button{cursor:pointer}
 .riser{left:14%;right:8%}
 .riser-low{left:18%;right:13%}
 .fixed-piano{transform:scale(.7) rotate(-22deg);transform-origin:top left}
-.object-editor{flex-wrap:wrap}
+.object-editor,.player-editor{flex-wrap:wrap}
 .object-editor label{margin-left:0}
 .equipment-workspace,.notes-card{padding:18px}
 .equipment-heading{gap:10px}
