@@ -139,6 +139,7 @@ button{cursor:pointer}
 .count-input input{width:36px;height:23px;border:1px solid #d4dcdf;border-radius:4px;text-align:center;color:#304c62;font-size:11px}
 .count-input small{color:#909ba3;font-size:9px}
 .count-input .count-add{width:auto;padding:0 7px;background:#eef7f6;border-color:#9fc9c3;color:#28645c;font-weight:700}
+.count-input .count-add:disabled{cursor:not-allowed;opacity:.45}
 .move-help{margin:10px 0 0;color:#798a94;font-size:10px;line-height:1.5}
 .equipment-workspace{margin-top:24px;padding:22px 24px}
 .equipment-heading{display:flex;align-items:flex-start;justify-content:space-between}
