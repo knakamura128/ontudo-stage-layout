@@ -11,7 +11,7 @@ const playerGroups = [
 
 const loadingOptions = ["管楽器", "ティンパニ", "ドラムセット", "バスドラム", "シロフォン", "ビブラフォン", "グロッケン", "コンガ", "ボンゴ", "ウィンドチャイム", "サスペンドシンバル", "ウッドブロック", "パーカッション小物"];
 const palette = [
-  { label: "椅子", icon: "🪑", kind: "chair" as const }, { label: "譜面台", icon: "🎼", kind: "stand" as const },
+  { label: "演奏者椅子", icon: "🪑", kind: "chair" as const }, { label: "折り畳み椅子", icon: "🪑", kind: "chair" as const }, { label: "譜面台", icon: "🎼", kind: "stand" as const },
   { label: "マイク", icon: "🎤", kind: "instrument" as const }, { label: "マイクスタンド", icon: "🎙️", kind: "stand" as const },
   { label: "キーボード", icon: "🎹", kind: "instrument" as const }, { label: "ドラム", icon: "🥁", kind: "instrument" as const },
   { label: "木琴", icon: "🎵", kind: "instrument" as const }, { label: "鉄琴", icon: "🎶", kind: "instrument" as const },
@@ -19,7 +19,7 @@ const palette = [
 ];
 const initialObjects = [
   { id: 1, label: "譜面台", icon: "🎼", kind: "stand" as const, x: 46, y: 70, power: false },
-  { id: 2, label: "椅子", icon: "🪑", kind: "chair" as const, x: 56, y: 73, power: false },
+  { id: 2, label: "演奏者椅子", icon: "🪑", kind: "chair" as const, x: 56, y: 73, power: false },
 ];
 
 export default function Home() {
@@ -39,8 +39,6 @@ export default function Home() {
   const [media, setMedia] = useState<string[]>([]);
   const [usePower, setUsePower] = useState(false);
   const [usePiano, setUsePiano] = useState(true);
-  const [usePodium, setUsePodium] = useState(false);
-  const [useMusicStand, setUseMusicStand] = useState(false);
   const [loading, setLoading] = useState<string[]>(["管楽器"]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
@@ -63,11 +61,20 @@ export default function Home() {
     updateLayout((now) => ({ ...now, objects: [...now.objects, { id: Date.now(), label, icon, kind, x: 50 + (now.objects.length % 3) * 7, y: 66 + (now.objects.length % 2) * 8, power: false }] }));
     setSaved(false);
   };
+  const toggleStageObject = (label: string, icon: string, kind: StageObject["kind"], enabled: boolean) => {
+    updateLayout((now) => ({
+      ...now,
+      objects: enabled
+        ? [...now.objects, { id: Date.now(), label, icon, kind, x: 50, y: 78, power: false }]
+        : now.objects.filter((item) => item.label !== label),
+    }));
+    setSaved(false);
+  };
   const toggleLoading = (label: string) => {
     setLoading((now) => now.includes(label) ? now.filter((item) => item !== label) : [...now, label]);
     setSaved(false);
   };
-  const moveObject = (event: PointerEvent<HTMLButtonElement>) => {
+  const moveObject = (event: PointerEvent<HTMLElement>) => {
     if (draggingId === null || !stageRef.current) return;
     const bounds = stageRef.current.getBoundingClientRect();
     const x = Math.min(94, Math.max(6, ((event.clientX - bounds.left) / bounds.width) * 100));
@@ -133,8 +140,6 @@ export default function Home() {
                 <div className="riser riser-low"><b>ひな壇 1段目</b><span>椅子 14</span>{Array.from({ length: 6 }).map((_, i) => <i key={i} />)}</div>
                 {!usePiano && <div className="unused-label">ピアノ 不使用</div>}
                 {players.map((player, index) => { const pos = playerPosition(index); return <span className="player-dot" style={{ left: `${pos.left}%`, top: `${pos.top}%` }} key={`${player.label}-${index}`}>{player.label}</span>; })}
-                {usePodium && <span className="podium">指揮台</span>}
-                {useMusicStand && <span className="conductor-stand">譜面台</span>}
                 {objects.map((item) => <button key={item.id} className={`stage-object ${item.kind} ${selectedId === item.id ? "is-selected" : ""}`} style={{ left: `${item.x}%`, top: `${item.y}%` }} onClick={() => setSelectedId(item.id)} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingId(item.id); setSelectedId(item.id); }} aria-label={`${item.label}を移動`}><span className="stage-object-icon">{item.icon}</span><span>{item.label}</span>{item.power && <em>⚡</em>}</button>)}
                 <div className="audience">客　席</div>
               </div>
@@ -145,8 +150,8 @@ export default function Home() {
           <section className="control-panel comprehensive-panel">
             <div className="panel-head"><div><p className="mini-label">EQUIPMENT & DELIVERY</p><h2>申請内容</h2></div><span className="form-no">様式 1104</span></div>
             <section className="form-section"><h3>搬入・電源</h3><div className="choice-line"><span>車での搬入</span><div className="segmented">{(["有", "無"] as const).map((value) => <button className={carDelivery === value ? "is-active" : ""} key={value} onClick={() => { setCarDelivery(value); setSaved(false); }}>{value}</button>)}</div></div><label className="switch-line"><input type="checkbox" checked={usePower} onChange={(e) => { setUsePower(e.target.checked); setSaved(false); }} /><span />電源（コンセント）を使用する</label>{usePower && <p className="power-note">使用する楽器を選び、舞台図上の対象オブジェクトで「電源を使用」をONにしてください。</p>}</section>
-            <section className="form-section"><h3>利用備品</h3><label className="switch-line"><input type="checkbox" checked={usePiano} onChange={(e) => setUsePiano(e.target.checked)} /><span />ピアノを使用する <small>（位置固定）</small></label><label className="switch-line"><input type="checkbox" checked={usePodium} onChange={(e) => setUsePodium(e.target.checked)} /><span />指揮台を使用する</label><label className="switch-line"><input type="checkbox" checked={useMusicStand} onChange={(e) => setUseMusicStand(e.target.checked)} /><span />指揮者譜面台を使用する</label></section>
-            <section className="form-section count-section"><h3>数量</h3><Count label="マイク" suffix="本（ワイヤレス）" value={counts.microphones} onChange={(v) => changeCount("microphones", v)} /><Count label="マイクスタンド" suffix="本" value={counts.micStands} onChange={(v) => changeCount("micStands", v)} /><Count label="演奏者椅子" suffix="脚（最大60）" value={counts.playerChairs} max={60} onChange={(v) => changeCount("playerChairs", v)} /><Count label="折りたたみ椅子" suffix="脚（最大50）" value={counts.foldingChairs} max={50} onChange={(v) => changeCount("foldingChairs", v)} /></section>
+            <section className="form-section"><h3>利用備品</h3><label className="switch-line"><input type="checkbox" checked={usePiano} onChange={(e) => setUsePiano(e.target.checked)} /><span />ピアノを使用する <small>（位置固定）</small></label><label className="switch-line"><input type="checkbox" checked={objects.some((item) => item.label === "指揮台")} onChange={(e) => toggleStageObject("指揮台", "▣", "stand", e.target.checked)} /><span />指揮台を使用する <small>（配置図上で移動可）</small></label><label className="switch-line"><input type="checkbox" checked={objects.some((item) => item.label === "指揮者譜面台")} onChange={(e) => toggleStageObject("指揮者譜面台", "🎼", "stand", e.target.checked)} /><span />指揮者譜面台を使用する <small>（配置図上で移動可）</small></label></section>
+            <section className="form-section count-section"><h3>数量</h3><Count label="マイク" suffix="本（ワイヤレス）" value={counts.microphones} onChange={(v) => changeCount("microphones", v)} onAdd={() => addObject("マイク", "🎤")} /><Count label="マイクスタンド" suffix="本" value={counts.micStands} onChange={(v) => changeCount("micStands", v)} onAdd={() => addObject("マイクスタンド", "🎙️", "stand")} /><Count label="演奏者椅子" suffix="脚（最大60）" value={counts.playerChairs} max={60} onChange={(v) => changeCount("playerChairs", v)} onAdd={() => addObject("演奏者椅子", "🪑", "chair")} /><Count label="折りたたみ椅子" suffix="脚（最大50）" value={counts.foldingChairs} max={50} onChange={(v) => changeCount("foldingChairs", v)} onAdd={() => addObject("折り畳み椅子", "🪑", "chair")} /><p className="move-help">「配置」を押すと舞台図へ追加され、ドラッグで自由に動かせます。</p></section>
           </section>
         </div>
 
@@ -171,8 +176,8 @@ export default function Home() {
   </main>;
 }
 
-function Count({ label, suffix, value, max, onChange }: { label: string; suffix: string; value: number; max?: number; onChange: (value: number) => void }) {
-  return <label className="count-input"><span>{label}</span><button onClick={() => onChange(value - 1)} type="button">−</button><input type="number" value={value} min="0" max={max} onChange={(e) => onChange(Number(e.target.value))} /><button onClick={() => onChange(value + 1)} type="button">＋</button><small>{suffix}</small></label>;
+function Count({ label, suffix, value, max, onChange, onAdd }: { label: string; suffix: string; value: number; max?: number; onChange: (value: number) => void; onAdd?: () => void }) {
+  return <label className="count-input"><span>{label}</span><button onClick={() => onChange(value - 1)} type="button">−</button><input type="number" value={value} min="0" max={max} onChange={(e) => onChange(Number(e.target.value))} /><button onClick={() => onChange(value + 1)} type="button">＋</button><small>{suffix}</small>{onAdd && <button className="count-add" onClick={onAdd} type="button">配置</button>}</label>;
 }
 
 function Field({ label, type, value, options, placeholder, suffix, onChange }: { label: string; type: "text" | "number" | "select"; value?: string; options?: string[]; placeholder?: string; suffix?: string; onChange: (value: string) => void }) {
