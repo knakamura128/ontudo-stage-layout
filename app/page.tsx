@@ -98,11 +98,6 @@ export default function Home() {
     }));
     setSaved(false);
   };
-  const restoreKounanLayout = () => {
-    updateLayout(() => ({ fanLayout: false, objects: initialObjects.map((item, index) => ({ ...item, id: Date.now() + index })), playerPositions: { ...initialPlayerPositions } }));
-    setSelectedId(null);
-    setSaved(false);
-  };
   const toggleLoading = (label: string) => {
     setLoading((now) => now.includes(label) ? now.filter((item) => item !== label) : [...now, label]);
     setSaved(false);
@@ -151,7 +146,7 @@ export default function Home() {
       <div className="content-wrap form-content">
         <section className="page-heading"><div><p className="section-kicker">KOUNAN ELEMENTARY SCHOOL / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第61回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {saved ? "登録内容を保存しました" : "編集内容は自動保存されます"}</div></section>
 
-        <section className="notice-card"><b>高南小学校の初期配置</b><p>高南小学校1104の配置図を初期状態に反映しています。ひな壇は直線配置で、2段目6枚（椅子14脚）、1段目7枚（椅子16脚）、舞台床は椅子44脚の構成です。ピアノの位置・向き、ひな壇のみ会場の固定配置です。</p></section>
+        <section className="notice-card"><b>固定配置について</b><p>ピアノの位置・向き、ひな壇は会場の固定配置です。演奏者・椅子・楽器などの配置物は、ドラッグで自由に調整できます。</p></section>
 
         <section className="request-summary">
           <div><span>学校名</span><strong>高南小学校</strong></div><div><span>出演人数</span><strong>{players.length}名</strong></div><div><span>舞台サイズ</span><strong>幅15m × 奥行12m</strong></div><div><span>演目</span><strong>吹奏楽</strong></div>
@@ -165,8 +160,8 @@ export default function Home() {
 
         <div className="layout-grid detailed-grid">
           <section className="stage-card detailed-stage-card">
-            <div className="card-head"><div><p className="mini-label">STAGE LAYOUT / {layoutMode === "program" ? `PROGRAM ${activeProgram + 1}` : "COMMON"}</p><h2>舞台配置図 <span className="view-hint">（{layoutMode === "program" ? programs[activeProgram] : "共通配置"}）</span></h2></div><div className="stage-actions"><button className="preset-reset" onClick={restoreKounanLayout}>高南小学校の初期配置に戻す</button><label className="fan-toggle"><input type="checkbox" checked={fanLayout} onChange={(e) => { updateLayout((now) => ({ ...now, fanLayout: e.target.checked })); setSaved(false); }} /><span />ひな壇以外を扇状に配置</label></div></div>
-            <div className="stage-legend"><span><i className="legend-coral" />演奏者 {players.length}名</span><span><i className="legend-navy" />固定備品</span><span><i className="legend-power" />電源使用</span><span>ひな壇上は直線固定</span><span>演奏者・備品をドラッグして配置</span></div>
+            <div className="card-head"><div><p className="mini-label">STAGE LAYOUT / {layoutMode === "program" ? `PROGRAM ${activeProgram + 1}` : "COMMON"}</p><h2>舞台配置図 <span className="view-hint">（{layoutMode === "program" ? programs[activeProgram] : "共通配置"}）</span></h2></div><label className="fan-toggle"><input type="checkbox" checked={fanLayout} onChange={(e) => { updateLayout((now) => ({ ...now, fanLayout: e.target.checked })); setSaved(false); }} /><span />ひな壇以外を扇状に配置</label></div>
+            <div className="stage-legend"><span><i className="legend-coral" />演奏者 {players.length}名</span><span><i className="legend-navy" />固定備品</span><span><i className="legend-power" />電源使用</span><span>ひな壇上は直線固定</span><span>演奏者・備品をドラッグして配置</span><span>備品右上の × で削除</span></div>
             <div className="stage-outline"><div className="stage-dimension top">奥行 12m</div><div className="stage-dimension bottom">幅 15m</div><div className="curtain left" /><div className="curtain right" />
               <div className="stage-floor large-floor" ref={stageRef} onPointerMove={moveObject} onPointerUp={() => { setDraggingId(null); setDraggingPlayerIndex(null); }} onPointerLeave={() => { setDraggingId(null); setDraggingPlayerIndex(null); }}>
                 <div className="fixed-piano"><span>🎹 固定</span><b>PIANO</b></div>
@@ -174,7 +169,7 @@ export default function Home() {
                 <div className="riser riser-low"><b>ひな壇 1段目</b><span>椅子 16</span>{Array.from({ length: 7 }).map((_, i) => <i key={i} />)}</div>
                 {!usePiano && <div className="unused-label">ピアノ 不使用</div>}
                 {players.map((player, index) => { const pos = activeLayout.playerPositions[index] ?? playerPosition(index); return <button className="player-dot" style={{ left: `${pos.left}%`, top: `${pos.top}%` }} key={`${player.label}-${index}`} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingPlayerIndex(index); setDraggingId(null); setSaved(false); }} aria-label={`${player.label}の演奏者を移動`}>{player.label}</button>; })}
-                {objects.map((item) => <button key={item.id} className={`stage-object ${item.kind} ${selectedId === item.id ? "is-selected" : ""}`} style={{ left: `${item.x}%`, top: `${item.y}%` }} onClick={() => setSelectedId(item.id)} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingId(item.id); setDraggingPlayerIndex(null); setSelectedId(item.id); setSaved(false); }} aria-label={`${item.label}を移動`}><span className="stage-object-icon">{item.icon}</span><span>{item.label}</span>{item.power && <em>⚡</em>}</button>)}
+                {objects.map((item) => <div key={item.id} className="stage-object-wrap" style={{ left: `${item.x}%`, top: `${item.y}%` }}><button className={`stage-object ${item.kind} ${selectedId === item.id ? "is-selected" : ""}`} onClick={() => setSelectedId(item.id)} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingId(item.id); setDraggingPlayerIndex(null); setSelectedId(item.id); setSaved(false); }} aria-label={`${item.label}を移動`}><span className="stage-object-icon">{item.icon}</span><span>{item.label}</span>{item.power && <em>⚡</em>}</button><button className="stage-object-delete" type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); updateLayout((now) => ({ ...now, objects: now.objects.filter((current) => current.id !== item.id) })); setSelectedId(null); setSaved(false); }} aria-label={`${item.label}を削除`} title={`${item.label}を削除`}>×</button></div>)}
                 <div className="audience">客　席</div>
               </div>
             </div>

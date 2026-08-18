@@ -55,8 +55,6 @@ button{cursor:pointer}
 .fan-toggle span:after{content:"";position:absolute;width:14px;height:14px;top:2px;left:2px;background:white;border-radius:50%;transition:.2s}
 .fan-toggle input:checked+span{background:#4d8798}
 .fan-toggle input:checked+span:after{left:15px}
-.stage-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
-.preset-reset{border:1px solid #a8c4ce;background:#f3fafb;color:#2e637b;border-radius:4px;padding:7px 9px;font-size:10px;font-weight:700}
 .stage-legend{display:flex;flex-wrap:wrap;gap:12px 17px;color:#7b8790;font-size:10px;margin:18px 0 12px}
 .stage-legend span{display:flex;align-items:center;gap:5px}
 .stage-legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
@@ -88,13 +86,16 @@ button{cursor:pointer}
 .podium{position:absolute;z-index:5;left:49%;bottom:7%;transform:translateX(-50%);background:#2e895b;color:white;padding:10px 15px;border:1px solid #14603a;font-size:9px}
 .conductor-stand{position:absolute;z-index:5;left:56%;bottom:7%;width:30px;height:25px;border:2px solid #395976;background:white;color:#395976;font-size:7px;display:grid;place-items:center}
 .unused-label{position:absolute;z-index:5;left:5%;top:40%;color:#ba5e50;background:#fff4ee;border:1px solid #e6b8ab;padding:4px 6px;font-size:9px}
-.stage-object{position:absolute;z-index:6;transform:translate(-50%,-50%);min-width:45px;min-height:29px;border:2px solid #2c638e;color:#244e70;background:#fdfdf9;border-radius:5px;padding:4px 6px;box-shadow:1px 2px 0 #7996a7;touch-action:none}
+.stage-object-wrap{position:absolute;z-index:6;transform:translate(-50%,-50%)}
+.stage-object{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;min-width:42px;min-height:36px;border:1.5px solid #2c638e;color:#244e70;background:#fdfdf9;border-radius:4px;padding:3px 4px;box-shadow:1px 1px 0 #7996a7;cursor:grab;touch-action:none}
 .stage-object.instrument{background:#e9f3fa}
-.stage-object.stand{border-radius:50%;width:34px;height:34px;min-width:34px;padding:0}
-.stage-object.chair{transform:translate(-50%,-50%) rotate(-10deg);width:39px;height:31px;background:#fffdfa}
+.stage-object.stand{border-radius:50%;width:29px;height:29px;min-width:29px;min-height:29px;padding:0}
+.stage-object.chair{transform:rotate(-10deg);width:32px;height:26px;min-width:32px;min-height:26px;background:#fffdfa}
 .stage-object.is-selected{outline:3px solid #f0c354}
-.stage-object span{font-size:8px;white-space:nowrap}
+.stage-object span{font-size:7px;line-height:1.1;white-space:nowrap}
 .stage-object em{position:absolute;right:-8px;top:-9px;font-style:normal;font-size:15px;color:#d99b20;text-shadow:0 1px white}
+.stage-object-delete{position:absolute;z-index:2;right:-8px;top:-8px;width:17px;height:17px;border:1px solid #b94f45;border-radius:50%;padding:0;background:#fff;color:#b94f45;font-size:14px;line-height:13px;display:none;place-items:center;cursor:pointer}
+.stage-object-wrap:hover .stage-object-delete,.stage-object.is-selected+.stage-object-delete{display:grid}
 .audience{position:absolute;bottom:11px;left:0;right:0;text-align:center;color:#5c717d;font-size:11px;letter-spacing:.4em}
 .object-editor{margin-top:12px;padding:10px 11px;border:1px solid #d7e3e4;border-radius:5px;background:#f5f9f8;display:flex;align-items:center;gap:11px;color:#4d6572;font-size:11px}
 .object-editor b{color:#2f5761}
@@ -226,9 +227,8 @@ button{cursor:pointer}
 .program-tabs>button.is-active{border-color:#376883;background:#376883;color:#fff;font-weight:700}
 .program-tabs .copy-layout{margin-left:auto;background:#eef5f8;color:#376883;border-color:#b9d0dc}
 .program-note{margin-top:14px;padding:9px 11px;border-radius:4px;background:#f5f8f6;color:#677985;font-size:11px}
-.stage-object{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:52px;min-height:49px}
-.stage-object .stage-object-icon{font-size:20px;line-height:1}
-.stage-object>span:last-of-type{font-size:8px;white-space:nowrap}
+.stage-object .stage-object-icon{font-size:15px;line-height:1}
+.stage-object>span:last-of-type{max-width:52px;overflow:hidden;text-overflow:ellipsis;font-size:7px;white-space:nowrap}
 .object-palette{display:grid;grid-template-columns:repeat(5,minmax(86px,1fr));gap:8px}
 .object-palette .palette-label{grid-column:1/-1;margin:0 0 3px;padding-top:0}
 .object-palette button{min-height:78px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-color:#d5dee0;background:#fff;color:#4f6370}
