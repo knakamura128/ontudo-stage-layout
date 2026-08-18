@@ -247,6 +247,8 @@ button{cursor:pointer}
 .stage-object>span:last-of-type{max-width:52px;overflow:hidden;text-overflow:ellipsis;font-size:7px;white-space:nowrap}
 .object-palette{display:grid;grid-template-columns:repeat(5,minmax(86px,1fr));gap:8px}
 .object-palette .palette-label{grid-column:1/-1;margin:0 0 3px;padding-top:0}
+.object-palette .extra-palette-label{margin-top:8px;padding-top:12px;border-top:1px solid #e3ebed}
+.object-palette .palette-empty{grid-column:1/-1;margin:0;padding:12px;border:1px dashed #c7d6dc;border-radius:5px;background:#f8fbfc;color:#73838d;font-size:11px}
 .object-palette button{min-height:78px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-color:#d5dee0;background:#fff;color:#4f6370}
 .object-palette button:hover{border-color:#5a8fac;background:#f0f8fb}
 .object-palette .tool-icon{font-size:27px;line-height:1}

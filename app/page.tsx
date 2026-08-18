@@ -11,6 +11,9 @@ const playerSlots = Array.from({ length: 100 }, (_, index) => ({ index }));
 const blankPlayerLabels = () => Object.fromEntries(playerSlots.map(({ index }) => [index, ""]));
 
 const loadingOptions = ["管楽器", "ティンパニ", "ドラムセット", "バスドラム", "シロフォン", "ビブラフォン", "グロッケン", "コンガ", "ボンゴ", "ウィンドチャイム", "サスペンドシンバル", "ウッドブロック", "パーカッション小物"];
+const loadInItemMeta: Record<string, Pick<StageObject, "label" | "icon" | "kind">> = {
+  "管楽器": { label: "管楽器", icon: "🎺", kind: "instrument" }, "ティンパニ": { label: "ティンパニ", icon: "🥁", kind: "instrument" }, "ドラムセット": { label: "ドラム", icon: "🥁", kind: "instrument" }, "バスドラム": { label: "バスドラム", icon: "🥁", kind: "instrument" }, "シロフォン": { label: "シロフォン", icon: "🎵", kind: "instrument" }, "ビブラフォン": { label: "ビブラフォン", icon: "🎶", kind: "instrument" }, "グロッケン": { label: "グロッケン", icon: "🎶", kind: "instrument" }, "コンガ": { label: "コンガ", icon: "🪘", kind: "instrument" }, "ボンゴ": { label: "ボンゴ", icon: "🪘", kind: "instrument" }, "ウィンドチャイム": { label: "ウィンドチャイム", icon: "🎐", kind: "instrument" }, "サスペンドシンバル": { label: "サスペンドシンバル", icon: "◯", kind: "instrument" }, "ウッドブロック": { label: "ウッドブロック", icon: "▰", kind: "instrument" }, "パーカッション小物": { label: "打楽器小物", icon: "▤", kind: "instrument" },
+};
 const palette = [
   { label: "譜面台", icon: "🎼", kind: "stand" as const },
   { label: "マイク", icon: "🎤", kind: "instrument" as const }, { label: "マイクスタンド", icon: "🎙️", kind: "stand" as const },
@@ -93,6 +96,10 @@ export default function Home() {
     updateLayout((now) => ({ ...now, objects: [...now.objects, { id: Date.now(), label, icon, kind, x: 50 + (now.objects.length % 3) * 7, y: 66 + (now.objects.length % 2) * 8, power: false }] }));
     setSaved(false);
   };
+  const addCountedObject = (key: "microphones" | "micStands", label: string, icon: string, kind: StageObject["kind"] = "instrument") => {
+    addObject(label, icon, kind);
+    changeCount(key, counts[key] + 1);
+  };
   const toggleStageObject = (label: string, icon: string, kind: StageObject["kind"], enabled: boolean) => {
     updateLayout((now) => ({
       ...now,
@@ -110,6 +117,11 @@ export default function Home() {
     setSelectedPlayerIndex(index);
     setNewPlayerLabel("");
     setSaved(false);
+  };
+  const addCountedPlayer = (seat: PlayerSeat) => {
+    addPlayer(seat);
+    const key = seat === "player" ? "playerChairs" : "foldingChairs";
+    changeCount(key, counts[key] + 1);
   };
   const clearStageLayout = () => {
     if (!window.confirm("この演目の演奏者・備品の配置をすべてクリアしますか？")) return;
@@ -202,14 +214,14 @@ export default function Home() {
             <div className="panel-head"><div><p className="mini-label">EQUIPMENT & DELIVERY</p><h2>申請内容</h2></div><span className="form-no">様式 1104</span></div>
             <section className="form-section"><h3>搬入・電源</h3><div className="choice-line"><span>車での搬入</span><div className="segmented">{(["有", "無"] as const).map((value) => <button className={carDelivery === value ? "is-active" : ""} key={value} onClick={() => { setCarDelivery(value); setSaved(false); }}>{value}</button>)}</div></div><label className="switch-line"><input type="checkbox" checked={usePower} onChange={(e) => { setUsePower(e.target.checked); setSaved(false); }} /><span />電源（コンセント）を使用する</label>{usePower && <p className="power-note">使用する楽器を選び、舞台図上の対象オブジェクトで「電源を使用」をONにしてください。</p>}</section>
             <section className="form-section"><h3>利用備品</h3><label className="switch-line"><input type="checkbox" checked={usePiano} onChange={(e) => setUsePiano(e.target.checked)} /><span />ピアノを使用する <small>（位置固定）</small></label><label className="switch-line"><input type="checkbox" checked={objects.some((item) => item.label === "指揮台")} onChange={(e) => toggleStageObject("指揮台", "▣", "stand", e.target.checked)} /><span />指揮台を使用する <small>（配置図上で移動可）</small></label><label className="switch-line"><input type="checkbox" checked={objects.some((item) => item.label === "指揮者譜面台")} onChange={(e) => toggleStageObject("指揮者譜面台", "🎼", "stand", e.target.checked)} /><span />指揮者譜面台を使用する <small>（配置図上で移動可）</small></label></section>
-            <section className="form-section count-section"><h3>数量</h3><Count label="マイク" suffix="本（ワイヤレス）" value={counts.microphones} onChange={(v) => changeCount("microphones", v)} onAdd={() => addObject("マイク", "🎤")} /><Count label="マイクスタンド" suffix="本" value={counts.micStands} onChange={(v) => changeCount("micStands", v)} onAdd={() => addObject("マイクスタンド", "🎙️", "stand")} /><Count label="演奏者椅子" suffix="脚（最大100）" value={counts.playerChairs} max={100} onChange={(v) => changeCount("playerChairs", v)} onAdd={() => addPlayer("player")} /><Count label="折りたたみ椅子" suffix="脚（最大50）" value={counts.foldingChairs} max={50} onChange={(v) => changeCount("foldingChairs", v)} onAdd={() => addPlayer("folding")} /><p className="move-help">椅子の「配置」は演奏者として追加します。表記は舞台図上の演奏者をクリックして編集できます。</p></section>
+            <section className="form-section count-section"><h3>数量</h3><Count label="マイク" suffix="本（ワイヤレス）" value={counts.microphones} onChange={(v) => changeCount("microphones", v)} onAdd={() => addCountedObject("microphones", "マイク", "🎤")} /><Count label="マイクスタンド" suffix="本" value={counts.micStands} onChange={(v) => changeCount("micStands", v)} onAdd={() => addCountedObject("micStands", "マイクスタンド", "🎙️", "stand")} /><Count label="演奏者椅子" suffix="脚（最大100）" value={counts.playerChairs} max={100} onChange={(v) => changeCount("playerChairs", v)} onAdd={() => addCountedPlayer("player")} /><Count label="折りたたみ椅子" suffix="脚（最大50）" value={counts.foldingChairs} max={50} onChange={(v) => changeCount("foldingChairs", v)} onAdd={() => addCountedPlayer("folding")} /><p className="move-help">「配置」を押すと申請数を1つ増やし、舞台図にも追加します。椅子は演奏者として追加されます。</p></section>
           </section>
         </div>
 
         <section className="equipment-workspace">
           <div className="equipment-heading"><div><p className="mini-label">LOAD-IN & OBJECT PALETTE</p><h2>搬入物を選び、舞台へ配置</h2><p>選択した楽器は、下のパレットから舞台図へ追加して配置できます。</p></div><div className="chosen-count">選択中 <b>{loading.length}</b> 件</div></div>
           <div className="loading-options">{loadingOptions.map((item) => <button key={item} className={loading.includes(item) ? "is-selected" : ""} onClick={() => toggleLoading(item)}>{loading.includes(item) ? "✓" : "＋"} {item}</button>)}</div>
-          <div className="object-palette"><div className="palette-label">舞台に追加</div>{palette.map((item) => <button key={item.label} onClick={() => addObject(item.label, item.icon, item.kind)}><span className="tool-icon">{item.icon}</span><span>{item.label}</span></button>)}</div>
+          <div className="object-palette"><div className="palette-label">選択済みの搬入物を舞台に追加</div>{loading.length ? loading.map((item) => { const meta = loadInItemMeta[item]; return <button key={item} onClick={() => addObject(meta.label, meta.icon, meta.kind)}><span className="tool-icon">{meta.icon}</span><span>{item}</span></button>; }) : <p className="palette-empty">上の搬入物を選ぶと、ここから舞台へ追加できます。</p>}<div className="palette-label extra-palette-label">その他の備品</div>{palette.map((item) => <button key={item.label} onClick={() => addObject(item.label, item.icon, item.kind)}><span className="tool-icon">{item.icon}</span><span>{item.label}</span></button>)}</div>
         </section>
 
         <section className="application-card">
