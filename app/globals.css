@@ -55,6 +55,8 @@ button{cursor:pointer}
 .fan-toggle span:after{content:"";position:absolute;width:14px;height:14px;top:2px;left:2px;background:white;border-radius:50%;transition:.2s}
 .fan-toggle input:checked+span{background:#4d8798}
 .fan-toggle input:checked+span:after{left:15px}
+.stage-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+.preset-reset{border:1px solid #a8c4ce;background:#f3fafb;color:#2e637b;border-radius:4px;padding:7px 9px;font-size:10px;font-weight:700}
 .stage-legend{display:flex;flex-wrap:wrap;gap:12px 17px;color:#7b8790;font-size:10px;margin:18px 0 12px}
 .stage-legend span{display:flex;align-items:center;gap:5px}
 .stage-legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
