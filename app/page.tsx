@@ -1,11 +1,27 @@
 "use client";
 
-import { PointerEvent, useRef, useState } from "react";
+import { PointerEvent, useEffect, useRef, useState } from "react";
 
 type StageObject = { id: number; label: string; icon: string; kind: "instrument" | "stand" | "chair"; x: number; y: number; power: boolean };
 type StagePoint = { left: number; top: number };
 type PlayerSeat = "player" | "folding";
 type ProgramLayout = { fanLayout: boolean; objects: StageObject[]; playerPositions: Record<number, StagePoint>; playerLabels: Record<number, string>; playerSeats: Record<number, PlayerSeat> };
+type SignedInUser = { email: string; name: string; role: "admin" | "viewer" };
+
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: { client_id: string; callback: (response: { credential: string }) => void; auto_select?: boolean }) => void;
+          renderButton: (element: HTMLElement, options: Record<string, string | number>) => void;
+        };
+      };
+    };
+  }
+}
+
+const GOOGLE_CLIENT_ID = "395301319192-sr44o695g8se9vkklp2485rb15jqpum2.apps.googleusercontent.com";
 
 const playerSlots = Array.from({ length: 100 }, (_, index) => ({ index }));
 const blankPlayerLabels = () => Object.fromEntries(playerSlots.map(({ index }) => [index, ""]));
@@ -54,6 +70,7 @@ const initialPlayerPositions = (() => {
 
 export default function Home() {
   const stageRef = useRef<HTMLDivElement>(null);
+  const googleButtonRef = useRef<HTMLDivElement>(null);
   const [layoutMode, setLayoutMode] = useState<"common" | "program">("program");
   const [programs, setPrograms] = useState(["吹奏楽：心をひとつに", "合奏：風のシンフォニー", "フィナーレ"]);
   const [activeProgram, setActiveProgram] = useState(0);
@@ -82,6 +99,64 @@ export default function Home() {
   const [notes, setNotes] = useState("バスオルガンを使用しないことになったため、電源使用もなしとなりました。配置図の「★」は譜面台を置く予定の椅子です。譜面台はこちらで持参いたします。");
   const [isCreatingPdf, setIsCreatingPdf] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [authUser, setAuthUser] = useState<SignedInUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
+
+  const completeGoogleSignIn = async (credential: string) => {
+    setAuthError("");
+    try {
+      const response = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+      const data = await response.json() as { user?: SignedInUser; error?: string };
+      if (!response.ok || !data.user) throw new Error(data.error || "ログインできませんでした。");
+      setAuthUser(data.user);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "ログインできませんでした。");
+    }
+  };
+
+  useEffect(() => {
+    fetch("/api/auth/session")
+      .then(async (response) => response.ok ? response.json() : null)
+      .then((data: { user?: SignedInUser } | null) => setAuthUser(data?.user ?? null))
+      .catch(() => setAuthUser(null))
+      .finally(() => setAuthLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (authLoading || authUser || !googleButtonRef.current) return;
+    const renderGoogleButton = () => {
+      if (!window.google || !googleButtonRef.current) return;
+      googleButtonRef.current.replaceChildren();
+      window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: ({ credential }) => void completeGoogleSignIn(credential), auto_select: false });
+      window.google.accounts.id.renderButton(googleButtonRef.current, { type: "standard", theme: "outline", size: "large", text: "signin_with", shape: "pill", width: 220 });
+    };
+    const existing = document.querySelector<HTMLScriptElement>('script[src="https://accounts.google.com/gsi/client"]');
+    if (existing) {
+      if (window.google) renderGoogleButton();
+      else existing.addEventListener("load", renderGoogleButton, { once: true });
+      return () => existing.removeEventListener("load", renderGoogleButton);
+    }
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.addEventListener("load", renderGoogleButton, { once: true });
+    document.head.appendChild(script);
+    return () => script.removeEventListener("load", renderGoogleButton);
+  }, [authLoading, authUser]);
+
+  const signOut = async () => {
+    await fetch("/api/auth/signout", { method: "POST" });
+    setAuthUser(null);
+    setSaved(false);
+  };
+
+  const canEdit = authUser?.role === "admin";
 
   const layoutKey = layoutMode === "common" ? 0 : activeProgram;
   const activeLayout = layouts[layoutKey];
@@ -210,9 +285,10 @@ export default function Home() {
     </aside>
 
     <section className="workspace">
-      <header className="topbar"><div className="crumbs">ホーム <span>／</span> 舞台配置</div><div className="account"><span className="school-avatar">{schoolName.slice(0, 1) || "校"}</span> {schoolName || "学校名未入力"} <span className="chevron">⌄</span></div></header>
-      <div className="content-wrap form-content">
-        <section className="page-heading"><div><p className="section-kicker">KOUNAN ELEMENTARY SCHOOL / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第61回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {saved ? "登録内容を保存しました" : "編集内容は自動保存されます"}</div></section>
+      <header className="topbar"><div className="crumbs">ホーム <span>／</span> 舞台配置</div><div className="account auth-account">{authUser ? <><span className="account-email">{authUser.email}</span><span className={`role-badge ${authUser.role}`}>{authUser.role === "admin" ? "管理者" : "閲覧者"}</span><button className="signout-button" onClick={() => void signOut()}>ログアウト</button></> : <div ref={googleButtonRef} className="google-signin" aria-label="Googleでログイン" />}</div></header>
+      {!authLoading && !canEdit && <div className="auth-notice"><b>{authUser ? "閲覧モードです" : "Googleでログインしてください"}</b><span>{authUser ? "管理者に指定されたアカウントのみ、申請内容を編集できます。" : "閲覧はどなたでも可能です。編集には管理者のGoogleアカウントでログインしてください。"}</span>{authError && <small>{authError}</small>}</div>}
+      <div className={`content-wrap form-content ${canEdit ? "" : "is-read-only"}`} aria-disabled={!canEdit}>
+        <section className="page-heading"><div><p className="section-kicker">KOUNAN ELEMENTARY SCHOOL / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第61回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {canEdit ? (saved ? "登録内容を保存しました" : "編集内容は自動保存されます") : "閲覧専用"}</div></section>
 
         <section className="notice-card"><b>固定配置について</b><p>ピアノの位置・向き、ひな壇は会場の固定配置です。演奏者・椅子・楽器などの配置物は、ドラッグで自由に調整できます。</p></section>
 
