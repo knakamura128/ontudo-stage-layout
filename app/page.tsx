@@ -280,7 +280,7 @@ export default function Home() {
   return <main className="app-shell">
     <aside className="side-nav" aria-label="主なメニュー">
       <div className="brand"><div className="brand-mark">♪</div><div><p className="brand-eyebrow">令和8年度</p><p className="brand-name">音楽のつどい</p></div></div>
-      <nav className="nav-list"><button className="nav-item is-active"><span className="nav-icon">⌘</span> 舞台配置</button><button className="nav-item"><span className="nav-icon">◇</span> 団体情報</button><button className="nav-item"><span className="nav-icon">✓</span> 提出前チェック <span className="nav-dot" /></button></nav>
+      <nav className="nav-list"><button className="nav-item is-active"><span className="nav-icon">⌘</span> 舞台配置</button><button className="nav-item"><span className="nav-icon">◇</span> 団体情報</button><button className="nav-item"><span className="nav-icon">✓</span> 提出前チェック <span className="nav-dot" /></button>{authUser?.role === "admin" && <a className="nav-item admin-nav-link" href="/admin"><span className="nav-icon">⚙</span> 管理者ページ</a>}</nav>
       <div className="deadline-card"><span>提出締切</span><strong>10月11日（金）</strong><small>原本の様式に準拠</small></div><div className="nav-foot">お問い合わせ　›</div>
     </aside>
 
