@@ -72,9 +72,9 @@ export default function Home() {
   const stageRef = useRef<HTMLDivElement>(null);
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const [layoutMode, setLayoutMode] = useState<"common" | "program">("program");
-  const [programs, setPrograms] = useState(["吹奏楽：心をひとつに", "合奏：風のシンフォニー", "フィナーレ"]);
+  const [programs, setPrograms] = useState(["", "", ""]);
   const [activeProgram, setActiveProgram] = useState(0);
-  const [schoolName, setSchoolName] = useState("高南小学校");
+  const [schoolName, setSchoolName] = useState("");
   const [performerTotal, setPerformerTotal] = useState(0);
   const [layouts, setLayouts] = useState<Record<number, ProgramLayout>>({
     0: { fanLayout: false, objects: [], playerPositions: {}, playerLabels: blankPlayerLabels(), playerSeats: {} },
@@ -316,7 +316,7 @@ export default function Home() {
 
         <section className="program-card">
           <div className="program-card-head"><div><p className="mini-label">PROGRAM LAYOUTS</p><h2>演目ごとの舞台配置</h2><p>演目によって配置が変わる場合は、それぞれのタブで舞台図を編集します。</p></div><div className="layout-mode"><button className={layoutMode === "common" ? "is-active" : ""} onClick={() => { setLayoutMode("common"); setActiveProgram(0); setSelectedId(null); setSelectedPlayerIndex(null); }}>共通配置</button><button className={layoutMode === "program" ? "is-active" : ""} onClick={() => setLayoutMode("program")}>演目ごと</button></div></div>
-          <div className="program-inputs">{programs.map((program, index) => <label key={index}><span>演目 {index + 1}</span><input value={program} onChange={(event) => { setPrograms((now) => now.map((item, current) => current === index ? event.target.value : item)); setSaved(false); }} /></label>)}</div>
+          <div className="program-inputs">{programs.map((program, index) => <label key={index}><span>演目 {index + 1}</span><input value={program} onChange={(event) => { setPrograms((now) => now.map((item, current) => current === index ? event.target.value : item)); setSaved(false); }} placeholder="例：合奏『風のシンフォニー』" /></label>)}</div>
           {layoutMode === "program" ? <div className="program-tabs">{programs.map((program, index) => <button key={index} className={activeProgram === index ? "is-active" : ""} onClick={() => { setActiveProgram(index); setSelectedId(null); setSelectedPlayerIndex(null); }}>{program || `演目 ${index + 1}`}</button>)}<button className="copy-layout" onClick={() => { const next = (activeProgram + 1) % programs.length; setLayouts((now) => ({ ...now, [next]: { fanLayout: activeLayout.fanLayout, objects: activeLayout.objects.map((item, index) => ({ ...item, id: Date.now() + index })), playerPositions: { ...activeLayout.playerPositions }, playerLabels: { ...activeLayout.playerLabels }, playerSeats: { ...activeLayout.playerSeats } } })); setActiveProgram(next); setSelectedId(null); setSelectedPlayerIndex(null); setSaved(false); }}>この配置を次の演目へコピー　→</button></div> : <div className="program-note">舞台配置図は1つです。作成した配置をすべての演目で共通して使用します。</div>}
         </section>
 
