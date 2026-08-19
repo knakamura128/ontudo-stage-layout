@@ -157,7 +157,7 @@ export default function Home() {
     setSaved(false);
   };
 
-  const canEdit = authUser?.role === "admin";
+  const isAdmin = authUser?.role === "admin";
   const submissionChecks = [
     { label: "団体情報（学校名）", ok: Boolean(schoolName.trim()) },
     { label: "出演人数", ok: performerTotal > 0 },
@@ -169,7 +169,9 @@ export default function Home() {
     setSubmissionMessage("");
     if (submit && missingChecks.length) { setSubmissionMessage("提出前チェックを完了してください。"); return; }
     try {
-      const response = await fetch("/api/submissions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schoolName, programName: programs[activeProgram] || programs.find(Boolean), performerTotal, submit, payload: { layouts, programs, counts, carDelivery, deliveryDate, soundVideo, soundCue, media, usePower, usePiano, loading, notes } }) });
+      const submissionKey = authUser ? undefined : (sessionStorage.getItem("music-stage-submission-key") ?? crypto.randomUUID());
+      if (submissionKey) sessionStorage.setItem("music-stage-submission-key", submissionKey);
+      const response = await fetch("/api/submissions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schoolName, programName: programs[activeProgram] || programs.find(Boolean), performerTotal, submit, submissionKey, payload: { layouts, programs, counts, carDelivery, deliveryDate, soundVideo, soundCue, media, usePower, usePiano, loading, notes } }) });
       const data = await response.json() as { error?: string };
       if (!response.ok) throw new Error(data.error || "保存できませんでした。");
       setSaved(true); setSubmissionMessage(submit ? "提出しました。管理者ページで提出状況を確認できます。" : "下書きを保存しました。");
@@ -298,15 +300,15 @@ export default function Home() {
   return <main className="app-shell">
     <aside className="side-nav" aria-label="主なメニュー">
       <div className="brand"><div className="brand-mark">♪</div><div><p className="brand-eyebrow">令和8年度</p><p className="brand-name">音楽のつどい</p></div></div>
-      <nav className="nav-list"><button className="nav-item is-active"><span className="nav-icon">⌘</span> 舞台配置</button><button className="nav-item" onClick={() => document.getElementById("organization")?.scrollIntoView({ behavior: "smooth" })}><span className="nav-icon">◇</span> 団体情報</button><button className="nav-item" onClick={() => document.getElementById("precheck")?.scrollIntoView({ behavior: "smooth" })}><span className="nav-icon">✓</span> 提出前チェック <span className={missingChecks.length ? "nav-dot" : ""} /></button>{authUser?.role === "admin" && <a className="nav-item admin-nav-link" href="/admin"><span className="nav-icon">⚙</span> 管理者ページ</a>}</nav>
+      <nav className="nav-list"><button className="nav-item is-active"><span className="nav-icon">⌘</span> 舞台配置</button><button className="nav-item" onClick={() => document.getElementById("organization")?.scrollIntoView({ behavior: "smooth" })}><span className="nav-icon">◇</span> 団体情報</button><button className="nav-item" onClick={() => document.getElementById("precheck")?.scrollIntoView({ behavior: "smooth" })}><span className="nav-icon">✓</span> 提出前チェック <span className={missingChecks.length ? "nav-dot" : ""} /></button>{isAdmin && <a className="nav-item admin-nav-link" href="/admin"><span className="nav-icon">⚙</span> 管理者ページ</a>}</nav>
       <div className="deadline-card"><span>提出締切</span><strong>10月11日（金）</strong><small>原本の様式に準拠</small></div><div className="nav-foot">お問い合わせ　›</div>
     </aside>
 
     <section className="workspace">
-      <header className="topbar"><div className="crumbs">ホーム <span>／</span> 舞台配置</div><div className="account auth-account">{authUser ? <><span className="account-email">{authUser.email}</span><span className={`role-badge ${authUser.role}`}>{authUser.role === "admin" ? "管理者" : "閲覧者"}</span><button className="signout-button" onClick={() => void signOut()}>ログアウト</button></> : <div ref={googleButtonRef} className="google-signin" aria-label="Googleでログイン" />}</div></header>
-      {!authLoading && !canEdit && <div className="auth-notice"><b>{authUser ? "閲覧モードです" : "Googleでログインしてください"}</b><span>{authUser ? "管理者に指定されたアカウントのみ、申請内容を編集できます。" : "閲覧はどなたでも可能です。編集には管理者のGoogleアカウントでログインしてください。"}</span>{authError && <small>{authError}</small>}</div>}
-      <div className={`content-wrap form-content ${canEdit ? "" : "is-read-only"}`} aria-disabled={!canEdit}>
-        <section className="page-heading"><div><p className="section-kicker">KOUNAN ELEMENTARY SCHOOL / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第61回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {canEdit ? (saved ? "登録内容を保存しました" : "編集内容は自動保存されます") : "閲覧専用"}</div></section>
+      <header className="topbar"><div className="crumbs">ホーム <span>／</span> 舞台配置</div><div className="account auth-account">{authUser ? <><span className="account-email">{authUser.email}</span><span className={`role-badge ${authUser.role}`}>{authUser.role === "admin" ? "管理者" : "閲覧者"}</span><button className="signout-button" onClick={() => void signOut()}>ログアウト</button></> : <><span className="public-entry">どなたでも作成・提出できます</span><div ref={googleButtonRef} className="google-signin" aria-label="管理者ログイン" /></>}</div></header>
+      {authError && <div className="auth-notice"><b>ログインできませんでした</b><small>{authError}</small></div>}
+      <div className="content-wrap form-content">
+        <section className="page-heading"><div><p className="section-kicker">STAGE LAYOUT / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第61回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {saved ? "登録内容を保存しました" : "どなたでも入力・提出できます"}</div></section>
 
         <section className="notice-card"><b>固定配置について</b><p>ピアノの位置・向き、ひな壇は会場の固定配置です。演奏者・椅子・楽器などの配置物は、ドラッグで自由に調整できます。</p></section>
 

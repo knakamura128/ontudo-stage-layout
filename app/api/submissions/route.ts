@@ -35,15 +35,17 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await readSession(request.headers.get("cookie"));
-    if (!user || user.role !== "admin") return NextResponse.json({ error: "管理者としてログインしてください。" }, { status: 403 });
-    const body = await request.json() as { schoolName?: string; programName?: string; performerTotal?: number; payload?: unknown; submit?: boolean };
+    const body = await request.json() as { schoolName?: string; programName?: string; performerTotal?: number; payload?: unknown; submit?: boolean; submissionKey?: string };
     if (!body.schoolName?.trim() || !body.programName?.trim()) return NextResponse.json({ error: "学校名と演目を入力してください。" }, { status: 400 });
     const db = database();
     await ensureSchema(db);
     const now = new Date().toISOString();
     const status = body.submit ? "submitted" : "draft";
+    const providedKey = body.submissionKey?.trim();
+    const guestKey = providedKey && /^[A-Za-z0-9_-]{10,120}$/.test(providedKey) ? providedKey : crypto.randomUUID();
+    const ownerKey = user?.role === "admin" ? user.email : `guest:${guestKey}`;
     await db.prepare("INSERT INTO submissions (owner_email, school_name, program_name, performer_total, status, payload, updated_at, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(owner_email) DO UPDATE SET school_name = excluded.school_name, program_name = excluded.program_name, performer_total = excluded.performer_total, status = excluded.status, payload = excluded.payload, updated_at = excluded.updated_at, submitted_at = excluded.submitted_at")
-      .bind(user.email, body.schoolName.trim(), body.programName.trim(), Math.max(0, Number(body.performerTotal) || 0), status, JSON.stringify(body.payload ?? {}), now, body.submit ? now : null).run();
+      .bind(ownerKey, body.schoolName.trim(), body.programName.trim(), Math.max(0, Number(body.performerTotal) || 0), status, JSON.stringify(body.payload ?? {}), now, body.submit ? now : null).run();
     return NextResponse.json({ ok: true, status, updatedAt: now });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "申請を保存できませんでした。" }, { status: 500 });
