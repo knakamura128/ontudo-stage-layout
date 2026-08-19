@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { readSession } from "@/app/lib/google-auth";
 
 type SubmissionRow = { id: number; owner_email: string; school_name: string; program_name: string; performer_total: number; status: "draft" | "submitted"; updated_at: string; submitted_at: string | null };
+let schemaReady: Promise<void> | null = null;
 
 function database() {
   const db = (env as { DB?: D1Database }).DB;
@@ -11,10 +12,11 @@ function database() {
 }
 
 async function ensureSchema(db: D1Database) {
-  await db.batch([
+  schemaReady ??= db.batch([
     db.prepare("CREATE TABLE IF NOT EXISTS submissions (id INTEGER PRIMARY KEY AUTOINCREMENT, owner_email TEXT NOT NULL UNIQUE, school_name TEXT NOT NULL, program_name TEXT NOT NULL, performer_total INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'draft', payload TEXT NOT NULL, updated_at TEXT NOT NULL, submitted_at TEXT)"),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_submissions_status_updated_at ON submissions(status, updated_at DESC)"),
-  ]);
+  ]).then(() => undefined);
+  await schemaReady;
 }
 
 export async function GET(request: Request) {
