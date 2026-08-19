@@ -34,7 +34,7 @@ export default async function AdminPage() {
       <div className="admin-wrap">
         <section className="admin-hero">
           <div><p className="section-kicker">ADMIN CONSOLE</p><h1>運用管理</h1><p>舞台配置の編集・提出資料の作成・公開設定を、管理者として確認できます。</p></div>
-          <Link href="/" className="admin-primary-link">舞台配置を編集する <span>→</span></Link>
+          <Link href="/#stage" className="admin-primary-link">舞台配置を編集する <span>→</span></Link>
         </section>
 
         <section className="admin-summary" aria-label="運用状況">
@@ -47,9 +47,9 @@ export default async function AdminPage() {
           <article className="admin-panel admin-panel-main">
             <div className="admin-panel-heading"><div><p className="mini-label">WORKFLOW</p><h2>管理者の作業</h2></div><span>3 STEP</span></div>
             <ol className="admin-workflow">
-              <li><i>1</i><div><b>舞台配置を編集</b><p>演目ごとの配置、演奏者、備品・搬入物を設定します。</p></div><Link href="/">編集する →</Link></li>
-              <li><i>2</i><div><b>提出資料を作成</b><p>「PDF作成（A4・1枚）」から提出用の資料を出力します。</p></div><Link href="/">作成する →</Link></li>
-              <li><i>3</i><div><b>共有して確認</b><p>公開URLを関係者へ案内し、閲覧用の画面として共有します。</p></div><Link href="/">確認する →</Link></li>
+              <li><i>1</i><div><b>舞台配置を編集</b><p>演目ごとの配置、演奏者、備品・搬入物を設定します。</p></div><Link href="/#stage">編集する →</Link></li>
+              <li><i>2</i><div><b>提出資料を作成</b><p>「PDF作成（A4・1枚）」から提出用の資料を出力します。</p></div><Link href="/#submit">作成する →</Link></li>
+              <li><i>3</i><div><b>共有して確認</b><p>提出前チェックを確認して、申請を提出します。</p></div><Link href="/#precheck">確認する →</Link></li>
             </ol>
           </article>
 
