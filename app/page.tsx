@@ -102,6 +102,7 @@ export default function Home() {
   const [authUser, setAuthUser] = useState<SignedInUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState("");
+  const [submissionMessage, setSubmissionMessage] = useState("");
 
   const completeGoogleSignIn = async (credential: string) => {
     setAuthError("");
@@ -157,6 +158,23 @@ export default function Home() {
   };
 
   const canEdit = authUser?.role === "admin";
+  const submissionChecks = [
+    { label: "団体情報（学校名）", ok: Boolean(schoolName.trim()) },
+    { label: "出演人数", ok: performerTotal > 0 },
+    { label: "演目", ok: Boolean(programs.some((program) => program.trim())) },
+    { label: "配置図の演奏者・備品", ok: Object.values(layouts).some((layout) => Object.values(layout.playerLabels).some(Boolean) || layout.objects.length > 0) },
+  ];
+  const missingChecks = submissionChecks.filter((item) => !item.ok);
+  const saveRegistration = async (submit: boolean) => {
+    setSubmissionMessage("");
+    if (submit && missingChecks.length) { setSubmissionMessage("提出前チェックを完了してください。"); return; }
+    try {
+      const response = await fetch("/api/submissions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schoolName, programName: programs[activeProgram] || programs.find(Boolean), performerTotal, submit, payload: { layouts, programs, counts, carDelivery, deliveryDate, soundVideo, soundCue, media, usePower, usePiano, loading, notes } }) });
+      const data = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(data.error || "保存できませんでした。");
+      setSaved(true); setSubmissionMessage(submit ? "提出しました。管理者ページで提出状況を確認できます。" : "下書きを保存しました。");
+    } catch (error) { setSubmissionMessage(error instanceof Error ? error.message : "保存できませんでした。"); }
+  };
 
   const layoutKey = layoutMode === "common" ? 0 : activeProgram;
   const activeLayout = layouts[layoutKey];
@@ -280,7 +298,7 @@ export default function Home() {
   return <main className="app-shell">
     <aside className="side-nav" aria-label="主なメニュー">
       <div className="brand"><div className="brand-mark">♪</div><div><p className="brand-eyebrow">令和8年度</p><p className="brand-name">音楽のつどい</p></div></div>
-      <nav className="nav-list"><button className="nav-item is-active"><span className="nav-icon">⌘</span> 舞台配置</button><button className="nav-item"><span className="nav-icon">◇</span> 団体情報</button><button className="nav-item"><span className="nav-icon">✓</span> 提出前チェック <span className="nav-dot" /></button>{authUser?.role === "admin" && <a className="nav-item admin-nav-link" href="/admin"><span className="nav-icon">⚙</span> 管理者ページ</a>}</nav>
+      <nav className="nav-list"><button className="nav-item is-active"><span className="nav-icon">⌘</span> 舞台配置</button><button className="nav-item" onClick={() => document.getElementById("organization")?.scrollIntoView({ behavior: "smooth" })}><span className="nav-icon">◇</span> 団体情報</button><button className="nav-item" onClick={() => document.getElementById("precheck")?.scrollIntoView({ behavior: "smooth" })}><span className="nav-icon">✓</span> 提出前チェック <span className={missingChecks.length ? "nav-dot" : ""} /></button>{authUser?.role === "admin" && <a className="nav-item admin-nav-link" href="/admin"><span className="nav-icon">⚙</span> 管理者ページ</a>}</nav>
       <div className="deadline-card"><span>提出締切</span><strong>10月11日（金）</strong><small>原本の様式に準拠</small></div><div className="nav-foot">お問い合わせ　›</div>
     </aside>
 
@@ -292,7 +310,7 @@ export default function Home() {
 
         <section className="notice-card"><b>固定配置について</b><p>ピアノの位置・向き、ひな壇は会場の固定配置です。演奏者・椅子・楽器などの配置物は、ドラッグで自由に調整できます。</p></section>
 
-        <section className="request-summary">
+        <section className="request-summary" id="organization">
           <label><span>学校名</span><input value={schoolName} onChange={(event) => { setSchoolName(event.target.value); setSaved(false); }} placeholder="学校名を入力" /></label><label><span>出演人数</span><div className="summary-number"><input type="number" value={performerTotal || ""} min="0" onChange={(event) => { setPerformerTotal(Math.max(0, Number(event.target.value))); setSaved(false); }} placeholder={`${placedPlayerCount}`} /><small>名</small></div></label><div><span>舞台サイズ</span><strong>幅15m × 奥行12m</strong></div><label><span>演目</span><input value={programs[activeProgram]} onChange={(event) => { const value = event.target.value; setPrograms((now) => now.map((item, index) => index === activeProgram ? value : item)); setSaved(false); }} placeholder="演目を入力" /></label>
         </section>
 
@@ -345,7 +363,8 @@ export default function Home() {
         </section>
 
         <section className="notes-card"><div><p className="mini-label">REQUESTS FOR SETUP STAFF</p><h2>その他・設営担当への要望</h2><p>必要な電源、大きな楽器の移動補助などを記入してください。</p></div><textarea value={notes} onChange={(event) => { setNotes(event.target.value); setSaved(false); }} /></section>
-        <section className="bottom-card"><div><p className="mini-label">SUBMIT</p><h2>この内容で舞台配置を登録しますか？</h2><p>提出用のA4資料はPDF作成から直接ダウンロードできます。</p></div><div className="submit-actions"><button className="pdf-button" onClick={createPdf} disabled={isCreatingPdf}>{isCreatingPdf ? "PDFを作成中…" : "PDF作成（A4・1枚）"}</button><button className={`submit-button ${saved ? "is-done" : ""}`} onClick={() => setSaved(true)}>{saved ? "✓　登録内容を保存しました" : "舞台配置を登録する　→"}</button></div></section>
+        <section className="precheck-card" id="precheck"><div><p className="mini-label">PRE-SUBMISSION CHECK</p><h2>提出前チェック</h2><p>不足している項目を確認してから提出してください。</p></div><ul>{submissionChecks.map((item) => <li key={item.label} className={item.ok ? "is-ok" : ""}>{item.ok ? "✓" : "!"} {item.label}<span>{item.ok ? "入力済み" : "未入力"}</span></li>)}</ul></section>
+        <section className="bottom-card"><div><p className="mini-label">SUBMIT</p><h2>この内容で舞台配置を登録しますか？</h2><p>{submissionMessage || "提出用のA4資料はPDF作成から直接ダウンロードできます。"}</p></div><div className="submit-actions"><button className="pdf-button" onClick={createPdf} disabled={isCreatingPdf}>{isCreatingPdf ? "PDFを作成中…" : "PDF作成（A4・1枚）"}</button><button className="pdf-button" onClick={() => void saveRegistration(false)}>下書きを保存</button><button className={`submit-button ${saved ? "is-done" : ""}`} onClick={() => void saveRegistration(true)}>{saved ? "✓　提出済み" : "舞台配置を提出する　→"}</button></div></section>
         <section className="submission-pdf" aria-hidden="true"><header><p>令和8年度　音楽のつどい</p><h1>舞台配置・使用機器等 提出資料</h1><small>作成日　{new Intl.DateTimeFormat("ja-JP", { dateStyle: "long", timeZone: "Asia/Tokyo" }).format(new Date())}</small></header><div className="pdf-meta"><div><span>学校名</span><b>{schoolName || "未入力"}</b></div><div><span>出演人数</span><b>{performerTotal || placedPlayerCount}名</b></div><div><span>演目</span><b>{programs[activeProgram] || "未入力"}</b></div></div><section className="pdf-section"><h2>舞台配置図</h2><div className="pdf-stage"><div className="pdf-piano">PIANO</div><div className="pdf-riser pdf-riser-top">ひな壇 2段目　椅子14</div><div className="pdf-riser pdf-riser-low">ひな壇 1段目　椅子16</div>{players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "player"; return label ? <span key={player.index} className={`pdf-player ${seat}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }}>{label}</span> : null; })}{objects.map((item) => <span key={item.id} className={`pdf-object ${item.kind}`} style={{ left: `${item.x}%`, top: `${item.y}%` }}>{item.icon} {item.label}{item.power ? " ⚡" : ""}</span>)}<div className="pdf-audience">客　席</div></div></section><div className="pdf-info-grid"><section><h2>利用備品・数量</h2><dl><div><dt>ピアノ</dt><dd>{usePiano ? "使用" : "不使用"}</dd></div><div><dt>マイク</dt><dd>{counts.microphones}本</dd></div><div><dt>マイクスタンド</dt><dd>{counts.micStands}本</dd></div><div><dt>演奏者椅子</dt><dd>{counts.playerChairs}脚</dd></div><div><dt>折り畳み椅子</dt><dd>{counts.foldingChairs}脚</dd></div><div><dt>電源（コンセント）</dt><dd>{usePower ? "使用" : "不使用"}</dd></div></dl></section><section><h2>搬入・音響</h2><dl><div><dt>車での搬入</dt><dd>{carDelivery}</dd></div><div><dt>搬入希望日</dt><dd>{deliveryDate}</dd></div><div><dt>搬入物</dt><dd>{loading.join("、") || "なし"}</dd></div><div><dt>音響・映像備品</dt><dd>{soundVideo}</dd></div><div><dt>音出し指示</dt><dd>{soundCue}</dd></div></dl></section></div><section className="pdf-notes"><h2>その他・設営担当への要望</h2><p>{notes || "なし"}</p></section><footer>第61回 音楽のつどい　舞台配置・使用機器等 提出資料</footer></section>
       </div>
     </section>
