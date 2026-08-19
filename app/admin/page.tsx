@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { readSession } from "@/app/lib/google-auth";
+import AdminLogin from "./admin-login";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +16,9 @@ export default async function AdminPage() {
           <div className="admin-lock">⌘</div>
           <p className="section-kicker">ADMIN ONLY</p>
           <h1>管理者ページ</h1>
-          <p>このページは管理者用です。舞台配置ページで、管理者に登録されたGoogleアカウントでログインしてください。</p>
-          <Link href="/" className="admin-primary-link">舞台配置ページへ戻る</Link>
+          <p>このページは管理者用です。管理者に登録されたGoogleアカウントでログインしてください。</p>
+          <AdminLogin />
+          <Link href="/" className="admin-secondary-link">舞台配置ページへ戻る</Link>
         </section>
       </main>
     );
