@@ -140,7 +140,7 @@ button{cursor:pointer}
 .switch-line input:checked+span:after{content:"✓";color:white;position:absolute;left:3px;top:-1px;font-size:12px}
 .switch-line small{color:#94a0a7}
 .power-note{margin:6px 0 0;padding:7px 9px;background:#fff8e8;color:#866e3a;border-radius:4px;font-size:10px;line-height:1.5}
-.count-input{display:grid;grid-template-columns:1fr 24px 36px 24px auto auto;gap:5px;align-items:center;margin:8px 0;color:#566977;font-size:11px}
+.count-input{display:grid;grid-template-columns:1fr 24px 36px 24px auto;gap:5px;align-items:center;margin:8px 0;color:#566977;font-size:11px}
 .count-input button{height:23px;padding:0;border:1px solid #d4dcdf;border-radius:4px;background:#fff;color:#4f6475}
 .count-input input{width:36px;height:23px;border:1px solid #d4dcdf;border-radius:4px;text-align:center;color:#304c62;font-size:11px}
 .count-input small{color:#909ba3;font-size:9px}
@@ -153,7 +153,7 @@ button{cursor:pointer}
 .equipment-heading p:not(.mini-label){margin:5px 0 0;color:#85929b;font-size:11px}
 .chosen-count{border-radius:4px;background:#e9f5f1;color:#4e7b6d;padding:8px 11px;font-size:11px}
 .chosen-count b{font-size:16px}
-.loading-options{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0}
+.loading-options{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0}.loading-option{display:flex;align-items:center;gap:3px}.loading-option .power-choice{padding:6px 8px;border-color:#f0d29a;color:#a96d20}.loading-option .power-choice.is-powered{background:#fff4d9;border-color:#df9f35;color:#895a18}
 .loading-options button{border:1px solid #d5dee0;border-radius:99px;background:white;padding:6px 10px;color:#637583;font-size:11px}
 .loading-options button.is-selected{color:#285d64;background:#e6f5f4;border-color:#9bc9c5;font-weight:700}
 .object-palette{border-top:1px solid var(--line);padding-top:15px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
