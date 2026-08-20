@@ -71,6 +71,7 @@ const initialPlayerPositions = (() => {
 export default function Home() {
   const stageRef = useRef<HTMLDivElement>(null);
   const googleButtonRef = useRef<HTMLDivElement>(null);
+  const loadedEditIdRef = useRef<number | null>(null);
   const [layoutMode, setLayoutMode] = useState<"common" | "program">("program");
   const [programs, setPrograms] = useState(["", "", ""]);
   const [activeProgram, setActiveProgram] = useState(0);
@@ -102,6 +103,7 @@ export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState("");
   const [submissionMessage, setSubmissionMessage] = useState("");
+  const [editingSubmissionId, setEditingSubmissionId] = useState<number | null>(null);
 
   const completeGoogleSignIn = async (credential: string) => {
     setAuthError("");
@@ -157,6 +159,26 @@ export default function Home() {
   };
 
   const isAdmin = authUser?.role === "admin";
+  useEffect(() => {
+    if (!isAdmin) return;
+    const requestedId = Number(new URLSearchParams(window.location.search).get("edit"));
+    if (!Number.isSafeInteger(requestedId) || requestedId <= 0 || loadedEditIdRef.current === requestedId) return;
+    loadedEditIdRef.current = requestedId;
+    fetch(`/api/submissions/${requestedId}`).then(async (response) => {
+      const data = await response.json() as { submission?: { id: number; school_name: string; program_name: string; performer_total: number; payload?: { layouts?: Record<number, ProgramLayout>; programs?: string[]; counts?: Partial<typeof counts>; carDelivery?: "有" | "無"; deliveryDate?: string; soundVideo?: "あり" | "なし"; soundCue?: "あり" | "なし"; media?: string[]; usePower?: boolean; usePiano?: boolean; loading?: string[]; notes?: string } }; error?: string };
+      if (!response.ok || !data.submission) throw new Error(data.error || "申請内容を読み込めませんでした。");
+      return data.submission;
+    }).then((submission) => {
+      const saved = submission.payload ?? {};
+      setSchoolName(submission.school_name); setPerformerTotal(submission.performer_total);
+      const savedPrograms = Array.isArray(saved.programs) ? saved.programs.slice(0, 3) : [];
+      setPrograms([...savedPrograms, ...Array.from({ length: Math.max(0, 3 - savedPrograms.length) }, (_, index) => index === 0 && !savedPrograms.length ? submission.program_name : "")]);
+      if (saved.layouts) setLayouts(saved.layouts);
+      setCounts({ microphones: Number(saved.counts?.microphones) || 0, micStands: Number(saved.counts?.micStands) || 0, playerChairs: Number(saved.counts?.playerChairs) || 0, foldingChairs: Number(saved.counts?.foldingChairs) || 0 });
+      setCarDelivery(saved.carDelivery === "有" ? "有" : "無"); setDeliveryDate(saved.deliveryDate ?? ""); setSoundVideo(saved.soundVideo === "あり" ? "あり" : "なし"); setSoundCue(saved.soundCue === "あり" ? "あり" : "なし"); setMedia(Array.isArray(saved.media) ? saved.media : []); setUsePower(Boolean(saved.usePower)); setUsePiano(Boolean(saved.usePiano)); setLoading(Array.isArray(saved.loading) ? saved.loading : []); setNotes(saved.notes ?? "");
+      const activeIndex = Math.max(0, savedPrograms.findIndex((program) => program === submission.program_name)); setActiveProgram(activeIndex); setEditingSubmissionId(submission.id); setSaved(false); setSubmissionMessage("申請内容を読み込みました。修正後に保存または再提出してください。");
+    }).catch((error: Error) => { loadedEditIdRef.current = null; setSubmissionMessage(error.message || "申請内容を読み込めませんでした。"); });
+  }, [isAdmin]);
   const submissionChecks = [
     { label: "団体情報（学校名）", ok: Boolean(schoolName.trim()) },
     { label: "出演人数", ok: performerTotal > 0 },
@@ -170,10 +192,10 @@ export default function Home() {
     try {
       const submissionKey = authUser ? undefined : (sessionStorage.getItem("music-stage-submission-key") ?? crypto.randomUUID());
       if (submissionKey) sessionStorage.setItem("music-stage-submission-key", submissionKey);
-      const response = await fetch("/api/submissions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schoolName, programName: programs[activeProgram] || programs.find(Boolean), performerTotal, submit, submissionKey, payload: { layouts, programs, counts, carDelivery, deliveryDate, soundVideo, soundCue, media, usePower, usePiano, loading, notes } }) });
+      const response = await fetch("/api/submissions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schoolName, programName: programs[activeProgram] || programs.find(Boolean), performerTotal, submit, submissionKey, submissionId: editingSubmissionId ?? undefined, payload: { layouts, programs, counts, carDelivery, deliveryDate, soundVideo, soundCue, media, usePower, usePiano, loading, notes } }) });
       const data = await response.json() as { error?: string };
       if (!response.ok) throw new Error(data.error || "保存できませんでした。");
-      setSaved(true); setSubmissionMessage(submit ? "提出しました。管理者ページで提出状況を確認できます。" : "下書きを保存しました。");
+      setSaved(true); setSubmissionMessage(submit ? (editingSubmissionId ? "修正内容を提出済みに更新しました。" : "提出しました。管理者ページで提出状況を確認できます。") : "下書きを保存しました。");
     } catch (error) { setSubmissionMessage(error instanceof Error ? error.message : "保存できませんでした。"); }
   };
 
@@ -287,7 +309,7 @@ export default function Home() {
       <header className="topbar"><div className="crumbs">ホーム <span>／</span> 舞台配置</div><div className="account auth-account">{authUser ? <><span className="account-email">{authUser.email}</span><span className={`role-badge ${authUser.role}`}>{authUser.role === "admin" ? "管理者" : "閲覧者"}</span><button className="signout-button" onClick={() => void signOut()}>ログアウト</button></> : <><span className="public-entry">どなたでも作成・提出できます</span><div ref={googleButtonRef} className="google-signin" aria-label="管理者ログイン" /></>}</div></header>
       {authError && <div className="auth-notice"><b>ログインできませんでした</b><small>{authError}</small></div>}
       <div className="content-wrap form-content">
-        <section className="page-heading"><div><p className="section-kicker">STAGE LAYOUT / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第61回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {saved ? "登録内容を保存しました" : "どなたでも入力・提出できます"}</div></section>
+        <section className="page-heading"><div><p className="section-kicker">STAGE LAYOUT / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第61回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {editingSubmissionId ? `申請 #${editingSubmissionId} を編集中` : saved ? "登録内容を保存しました" : "どなたでも入力・提出できます"}</div></section>
 
         <section className="notice-card"><b>固定配置について</b><p>ピアノの位置・向き、ひな壇は会場の固定配置です。演奏者・椅子・楽器などの配置物は、ドラッグで自由に調整できます。</p></section>
 

@@ -35,12 +35,19 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await readSession(request.headers.get("cookie"));
-    const body = await request.json() as { schoolName?: string; programName?: string; performerTotal?: number; payload?: unknown; submit?: boolean; submissionKey?: string };
+    const body = await request.json() as { schoolName?: string; programName?: string; performerTotal?: number; payload?: unknown; submit?: boolean; submissionKey?: string; submissionId?: number };
     if (!body.schoolName?.trim() || !body.programName?.trim()) return NextResponse.json({ error: "学校名と演目を入力してください。" }, { status: 400 });
     const db = database();
     await ensureSchema(db);
     const now = new Date().toISOString();
     const status = body.submit ? "submitted" : "draft";
+    const submissionId = Number(body.submissionId);
+    if (user?.role === "admin" && Number.isSafeInteger(submissionId) && submissionId > 0) {
+      const result = await db.prepare("UPDATE submissions SET school_name = ?, program_name = ?, performer_total = ?, status = ?, payload = ?, updated_at = ?, submitted_at = ? WHERE id = ?")
+        .bind(body.schoolName.trim(), body.programName.trim(), Math.max(0, Number(body.performerTotal) || 0), status, JSON.stringify(body.payload ?? {}), now, body.submit ? now : null, submissionId).run();
+      if (!result.meta.changes) return NextResponse.json({ error: "更新対象の申請が見つかりません。" }, { status: 404 });
+      return NextResponse.json({ ok: true, id: submissionId, status, updatedAt: now });
+    }
     const providedKey = body.submissionKey?.trim();
     const guestKey = providedKey && /^[A-Za-z0-9_-]{10,120}$/.test(providedKey) ? providedKey : crypto.randomUUID();
     const ownerKey = user?.role === "admin" ? user.email : `guest:${guestKey}`;
