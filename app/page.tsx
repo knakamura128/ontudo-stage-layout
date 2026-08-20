@@ -275,8 +275,8 @@ export default function Home() {
     if (draggingPlayerIndex !== null) updateLayout((now) => ({ ...now, playerPositions: { ...now.playerPositions, [draggingPlayerIndex]: { left: x, top: y } } }));
   };
   const playerPosition = (position: number) => {
-    const riserUpperCount = 16;
-    const riserLowerCount = 14;
+    const riserUpperCount = 14;
+    const riserLowerCount = 16;
     const riserCount = riserUpperCount + riserLowerCount;
 
     // ひな壇上の演奏者は、扇状配置の切替に関わらず直線配置に保つ。

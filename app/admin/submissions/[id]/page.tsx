@@ -8,13 +8,28 @@ export const dynamic = "force-dynamic";
 
 type StageObject = { id: number; label: string; icon: string; kind: "instrument" | "stand" | "chair"; x: number; y: number; power: boolean };
 type StagePoint = { left: number; top: number };
-type ProgramLayout = { objects?: StageObject[]; playerPositions?: Record<number, StagePoint>; playerLabels?: Record<number, string>; playerSeats?: Record<number, "player" | "folding"> };
+type ProgramLayout = { fanLayout?: boolean; objects?: StageObject[]; playerPositions?: Record<number, StagePoint>; playerLabels?: Record<number, string>; playerSeats?: Record<number, "player" | "folding"> };
 type SubmissionPayload = { layouts?: Record<number, ProgramLayout>; programs?: string[]; counts?: Record<string, number>; loading?: string[]; notes?: string; carDelivery?: string; deliveryDate?: string; soundVideo?: string; soundCue?: string; usePower?: boolean; usePiano?: boolean };
 type Row = { id: number; school_name: string; program_name: string; performer_total: number; status: "draft" | "submitted"; payload: string; submitted_at: string | null };
 
-function fallbackPosition(index: number): StagePoint {
-  const row = Math.floor(index / 12);
-  return { left: 20 + (index % 12) * 5.5, top: 48 + row * 13 };
+function fallbackPosition(index: number, fanLayout: boolean): StagePoint {
+  const riserUpperCount = 14;
+  const riserLowerCount = 16;
+  const riserCount = riserUpperCount + riserLowerCount;
+  if (index < riserUpperCount) return { left: Number((22 + index * (56 / (riserUpperCount - 1))).toFixed(3)), top: 13 };
+  if (index < riserCount) {
+    const lowerIndex = index - riserUpperCount;
+    return { left: Number((27 + lowerIndex * (47 / (riserLowerCount - 1))).toFixed(3)), top: 29 };
+  }
+  const outsideIndex = index - riserCount;
+  const outsideCount = 100 - riserCount;
+  const row = Math.floor(outsideIndex / 16);
+  const inRow = outsideIndex % 16;
+  const rowSize = Math.min(16, outsideCount - row * 16);
+  if (!fanLayout) return { left: Number((23 + inRow * (54 / Math.max(1, rowSize - 1))).toFixed(3)), top: 52 + row * 18 };
+  const angle = 202 + inRow * (136 / Math.max(1, rowSize - 1));
+  const radius = 29 - row * 7;
+  return { left: Number((50 + Math.cos((angle * Math.PI) / 180) * radius * 1.28).toFixed(3)), top: Number((82 + Math.sin((angle * Math.PI) / 180) * radius).toFixed(3)) };
 }
 
 function valueOrNone(value?: string) { return value?.trim() || "なし"; }
@@ -46,7 +61,7 @@ export default async function SubmissionDetail({ params }: { params: Promise<{ i
         <div className="setup-sheet-meta"><div><span>学校名</span><b>{row.school_name}</b></div><div><span>出演人数</span><b>{row.performer_total}名</b></div><div><span>演目</span><b>{row.program_name}</b></div></div>
         <section className="setup-stage-section"><div className="setup-section-head"><h2>舞台配置図</h2><span>客席側から見た配置</span></div><div className="setup-stage-map">
           <div className="setup-piano">PIANO</div><div className="setup-riser setup-riser-top">ひな壇 2段目（椅子14）</div><div className="setup-riser setup-riser-low">ひな壇 1段目（椅子16）</div>
-          {players.map(([index, label]) => { const playerIndex = Number(index); const point = layout.playerPositions?.[playerIndex] ?? fallbackPosition(playerIndex); const seat = layout.playerSeats?.[playerIndex] ?? "player"; return <span key={index} className={`setup-player ${seat}`} style={{ left: `${point.left}%`, top: `${point.top}%` }}>{label}</span>; })}
+          {players.map(([index, label]) => { const playerIndex = Number(index); const point = layout.playerPositions?.[playerIndex] ?? fallbackPosition(playerIndex, Boolean(layout.fanLayout)); const seat = layout.playerSeats?.[playerIndex] ?? "player"; return <span key={index} className={`setup-player ${seat}`} style={{ left: `${point.left}%`, top: `${point.top}%` }}>{label}</span>; })}
           {objects.map((item) => <span key={item.id} className={`setup-object ${item.kind}`} style={{ left: `${item.x}%`, top: `${item.y}%` }}><i>{item.icon}</i>{item.label}{item.power && <em>⚡</em>}</span>)}
           <div className="setup-audience">客　席</div>
         </div><div className="setup-legend"><span><i className="solid" />演奏者椅子</span><span><i className="dashed" />折り畳み椅子</span><span>⚡ 電源を使用する備品</span></div>
