@@ -33,37 +33,37 @@ export default async function AdminPage() {
       </header>
       <div className="admin-wrap">
         <section className="admin-hero">
-          <div><p className="section-kicker">ADMIN CONSOLE</p><h1>運用管理</h1><p>舞台配置の編集・提出資料の作成・公開設定を、管理者として確認できます。</p></div>
-          <Link href="/#stage" className="admin-primary-link">舞台配置を編集する <span>→</span></Link>
+          <div><p className="section-kicker">ADMIN CONSOLE</p><h1>運用管理</h1><p>学校から提出された舞台配置・備品資料を確認し、教育委員会への提出用に整えます。</p></div>
+          <Link href="#submissions" className="admin-primary-link">申請一覧を開く <span>→</span></Link>
         </section>
 
         <section className="admin-summary" aria-label="運用状況">
-          <article><span className="admin-card-icon coral">⌘</span><div><small>ログイン権限</small><b>管理者</b><p>このアカウントは編集可能です</p></div></article>
-          <article><span className="admin-card-icon blue">◎</span><div><small>公開状態</small><b>URL共有で閲覧可</b><p>一般の閲覧者は編集できません</p></div></article>
-          <article><span className="admin-card-icon green">▣</span><div><small>提出資料</small><b>PDF作成に対応</b><p>舞台配置ページからA4で出力できます</p></div></article>
+          <article><span className="admin-card-icon coral">⌘</span><div><small>ログイン権限</small><b>管理者</b><p>申請一覧・設営資料を確認できます</p></div></article>
+          <article><span className="admin-card-icon blue">◎</span><div><small>学校担当者の入稿</small><b>どなたでも提出可</b><p>学校は提出後の対応は不要です</p></div></article>
+          <article><span className="admin-card-icon green">▣</span><div><small>設営資料</small><b>学校ごとにPDF作成</b><p>申請詳細からA4・1枚で出力できます</p></div></article>
         </section>
 
         <section className="admin-grid">
           <article className="admin-panel admin-panel-main">
             <div className="admin-panel-heading"><div><p className="mini-label">WORKFLOW</p><h2>管理者の作業</h2></div><span>3 STEP</span></div>
             <ol className="admin-workflow">
-              <li><i>1</i><div><b>舞台配置を編集</b><p>演目ごとの配置、演奏者、備品・搬入物を設定します。</p></div><Link href="/#stage">編集する →</Link></li>
-              <li><i>2</i><div><b>提出資料を作成</b><p>「PDF作成（A4・1枚）」から提出用の資料を出力します。</p></div><Link href="/#submit">作成する →</Link></li>
-              <li><i>3</i><div><b>共有して確認</b><p>提出前チェックを確認して、申請を提出します。</p></div><Link href="/#precheck">確認する →</Link></li>
+              <li><i>1</i><div><b>提出内容を確認</b><p>学校から届いた舞台配置・備品の申請を一覧で確認します。</p></div><Link href="#submissions">一覧を見る →</Link></li>
+              <li><i>2</i><div><b>学校ごとの設営資料を作成</b><p>申請詳細を開き、舞台図・備品・搬入内容をA4・1枚のPDFにします。</p></div><Link href="#submissions">詳細を開く →</Link></li>
+              <li><i>3</i><div><b>教育委員会へ提出・当日配布</b><p>印刷した資料を教育委員会へ渡し、打ち合わせ当日の設営資料として配布します。</p></div><Link href="#submissions">申請を確認 →</Link></li>
             </ol>
           </article>
 
           <aside className="admin-panel">
             <div className="admin-panel-heading"><div><p className="mini-label">ACCESS CONTROL</p><h2>アクセス管理</h2></div></div>
             <div className="access-status"><span className="access-dot" />Googleアカウント認証を有効化中</div>
-            <p className="admin-copy">管理者に指定されたアカウントだけが、舞台配置の編集・削除・PDF作成を行えます。</p>
+            <p className="admin-copy">管理者に指定されたアカウントだけが、申請一覧の確認・申請詳細の閲覧・設営資料PDFの作成を行えます。</p>
             <div className="admin-tip"><b>管理者の追加</b><span>追加したいGoogleメールアドレスをお知らせください。すぐに編集権限を付与できます。</span></div>
           </aside>
         </section>
 
         <SubmissionList />
 
-        <section className="admin-notice"><b>現在の運用について</b><p>この管理ページでは、公開状態と編集権限を確認できます。申請の一覧・提出状況をまとめて管理する機能も、次の段階で追加できます。</p></section>
+        <section className="admin-notice"><b>現在の運用について</b><p>集計は行いません。学校ごとの提出内容をそのまま設営資料として出力し、教育委員会への提出・当日の備品配置に使用します。</p></section>
       </div>
     </main>
   );
