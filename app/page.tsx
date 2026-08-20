@@ -33,12 +33,7 @@ const loadInItemMeta: Record<string, Pick<StageObject, "label" | "icon" | "kind"
 const palette = [
   { label: "譜面台", icon: "🎼", kind: "stand" as const },
   { label: "マイク", icon: "🎤", kind: "instrument" as const }, { label: "マイクスタンド", icon: "🎙️", kind: "stand" as const },
-  { label: "キーボード", icon: "🎹", kind: "instrument" as const }, { label: "ドラム", icon: "🥁", kind: "instrument" as const },
-  { label: "ティンパニ", icon: "🥁", kind: "instrument" as const }, { label: "バスドラム", icon: "🥁", kind: "instrument" as const },
-  { label: "木琴", icon: "🎵", kind: "instrument" as const }, { label: "鉄琴", icon: "🎶", kind: "instrument" as const },
-  { label: "ウィンドチャイム", icon: "🎐", kind: "instrument" as const }, { label: "サスペンドシンバル", icon: "◯", kind: "instrument" as const },
-  { label: "コンガ", icon: "🪘", kind: "instrument" as const }, { label: "ボンゴ", icon: "🪘", kind: "instrument" as const },
-  { label: "指揮台", icon: "▣", kind: "stand" as const }, { label: "その他", icon: "＋", kind: "instrument" as const },
+  { label: "キーボード", icon: "🎹", kind: "instrument" as const }, { label: "その他", icon: "＋", kind: "instrument" as const },
 ];
 const initialObjects: StageObject[] = [
   { id: 1, label: "ウィンドチャイム", icon: "🎐", kind: "instrument", x: 18, y: 13, power: false },
@@ -238,6 +233,12 @@ export default function Home() {
     updateLayout((now) => ({ ...now, objects: [...now.objects, { id: Date.now(), label, icon, kind, x: 50 + (now.objects.length % 3) * 7, y: 66 + (now.objects.length % 2) * 8, power }] }));
     setSaved(false);
   };
+  const addLoadInObject = (item: string) => {
+    const meta = loadInItemMeta[item];
+    if (!meta) return;
+    setLoading((now) => now.includes(item) ? now : [...now, item]);
+    addObject(meta.label, meta.icon, meta.kind, usePower && poweredLoading.includes(item));
+  };
   const addBulkObjects = (count: number, label: string, icon: string, kind: StageObject["kind"] = "instrument") => {
     if (count <= 0) return;
     updateLayout((now) => ({
@@ -287,12 +288,15 @@ export default function Home() {
     setSelectedPlayerIndex(null);
     setSaved(false);
   };
-  const toggleLoading = (label: string) => {
-    setLoading((now) => {
-      const next = now.includes(label) ? now.filter((item) => item !== label) : [...now, label];
-      if (!next.includes(label)) setPoweredLoading((powered) => powered.filter((item) => item !== label));
-      return next;
-    });
+  const removeObject = (id: number) => {
+    const removed = objects.find((item) => item.id === id);
+    updateLayout((now) => ({ ...now, objects: now.objects.filter((item) => item.id !== id) }));
+    const loadingItem = removed && Object.entries(loadInItemMeta).find(([, meta]) => meta.label === removed.label)?.[0];
+    if (loadingItem && !objects.some((item) => item.id !== id && item.label === removed.label)) {
+      setLoading((now) => now.filter((item) => item !== loadingItem));
+      setPoweredLoading((now) => now.filter((item) => item !== loadingItem));
+    }
+    setSelectedId(null);
     setSaved(false);
   };
   const moveObject = (event: PointerEvent<HTMLElement>) => {
@@ -357,13 +361,13 @@ export default function Home() {
                 <div className="riser riser-low"><b>ひな壇 1段目</b><span>椅子 16</span>{Array.from({ length: 7 }).map((_, i) => <i key={i} />)}</div>
                 {!usePiano && <div className="unused-label">ピアノ 不使用</div>}
                 {players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "player"; return label ? <button className={`player-dot ${seat} ${selectedPlayerIndex === index ? "is-selected" : ""}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }} key={player.index} onClick={() => { setSelectedPlayerIndex(index); setSelectedId(null); }} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingPlayerIndex(index); setDraggingId(null); setSaved(false); }} aria-label={`${label}の演奏者を移動`}><span>{label}</span></button> : null; })}
-                {objects.map((item) => <div key={item.id} className="stage-object-wrap" style={{ left: `${item.x}%`, top: `${item.y}%` }}><button className={`stage-object ${item.kind} ${selectedId === item.id ? "is-selected" : ""}`} onClick={() => setSelectedId(item.id)} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingId(item.id); setDraggingPlayerIndex(null); setSelectedId(item.id); setSaved(false); }} aria-label={`${item.label}を移動`}><span className="stage-object-icon">{item.icon}</span><span>{item.label}</span>{item.power && <em>⚡</em>}</button><button className="stage-object-delete" type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); updateLayout((now) => ({ ...now, objects: now.objects.filter((current) => current.id !== item.id) })); setSelectedId(null); setSaved(false); }} aria-label={`${item.label}を削除`} title={`${item.label}を削除`}>×</button></div>)}
+                {objects.map((item) => <div key={item.id} className="stage-object-wrap" style={{ left: `${item.x}%`, top: `${item.y}%` }}><button className={`stage-object ${item.kind} ${selectedId === item.id ? "is-selected" : ""}`} onClick={() => setSelectedId(item.id)} onPointerDown={(event) => { event.currentTarget.setPointerCapture(event.pointerId); setDraggingId(item.id); setDraggingPlayerIndex(null); setSelectedId(item.id); setSaved(false); }} aria-label={`${item.label}を移動`}><span className="stage-object-icon">{item.icon}</span><span>{item.label}</span>{item.power && <em>⚡</em>}</button><button className="stage-object-delete" type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); removeObject(item.id); }} aria-label={`${item.label}を削除`} title={`${item.label}を削除`}>×</button></div>)}
                 <div className="audience">客　席</div>
               </div>
             </div>
             <div className="player-editor"><label><span>演奏者の表記</span><input value={newPlayerLabel} onChange={(event) => setNewPlayerLabel(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") addPlayer(); }} placeholder="例：Tp、Hr、Euph" maxLength={12} /></label><div className="seat-picker"><button className={newPlayerSeat === "player" ? "is-active" : ""} onClick={() => setNewPlayerSeat("player")}>🪑 演奏者椅子</button><button className={newPlayerSeat === "folding" ? "is-active" : ""} onClick={() => setNewPlayerSeat("folding")}>▱ 折り畳み椅子</button></div><button onClick={() => addPlayer()}>演奏者を配置</button><small>空欄なら「演奏者」として追加し、クリック後に表記を編集できます。</small></div>
             {selectedPlayerIndex !== null && <div className="object-editor performer-editor-selected"><b>選択中の演奏者を編集</b><input value={activeLayout.playerLabels[selectedPlayerIndex] ?? ""} onChange={(event) => { const label = event.target.value; updateLayout((now) => ({ ...now, playerLabels: { ...now.playerLabels, [selectedPlayerIndex]: label } })); setSaved(false); }} maxLength={12} aria-label="演奏者の表記" /><button onClick={() => { const seat = activeLayout.playerSeats[selectedPlayerIndex] ?? "player"; updateLayout((now) => { const playerLabels = { ...now.playerLabels, [selectedPlayerIndex]: "" }; const playerPositions = { ...now.playerPositions }; const playerSeats = { ...now.playerSeats }; delete playerPositions[selectedPlayerIndex]; delete playerSeats[selectedPlayerIndex]; return { ...now, playerLabels, playerPositions, playerSeats }; }); setCounts((now) => ({ ...now, [seat === "player" ? "playerChairs" : "foldingChairs"]: Math.max(0, now[seat === "player" ? "playerChairs" : "foldingChairs"] - 1) })); setSelectedPlayerIndex(null); setSaved(false); }}>削除</button></div>}
-            {selectedId !== null && <div className="object-editor"><b>選択中の配置物</b><span>{objects.find((item) => item.id === selectedId)?.icon} {objects.find((item) => item.id === selectedId)?.label}</span><label><input type="checkbox" checked={objects.find((item) => item.id === selectedId)?.power ?? false} onChange={(e) => { updateLayout((now) => ({ ...now, objects: now.objects.map((item) => item.id === selectedId ? { ...item, power: e.target.checked } : item) })); setSaved(false); }} />電源を使用</label><button onClick={() => { updateLayout((now) => ({ ...now, objects: now.objects.filter((item) => item.id !== selectedId) })); setSelectedId(null); setSaved(false); }}>削除</button></div>}
+            {selectedId !== null && <div className="object-editor"><b>選択中の配置物</b><span>{objects.find((item) => item.id === selectedId)?.icon} {objects.find((item) => item.id === selectedId)?.label}</span><label><input type="checkbox" checked={objects.find((item) => item.id === selectedId)?.power ?? false} onChange={(e) => { updateLayout((now) => ({ ...now, objects: now.objects.map((item) => item.id === selectedId ? { ...item, power: e.target.checked } : item) })); if (e.target.checked) setUsePower(true); setSaved(false); }} />電源を使用</label><button onClick={() => removeObject(selectedId)}>削除</button></div>}
           </section>
 
           <section className="control-panel comprehensive-panel">
@@ -374,10 +378,10 @@ export default function Home() {
         </div>
 
         <section className="equipment-workspace">
-          <div className="equipment-heading"><div><p className="mini-label">LOAD-IN & OBJECT PALETTE</p><h2>搬入物を選び、舞台へ配置</h2><p>搬入物を選択し、必要なものは⚡で電源使用を指定してから舞台図へ追加します。</p></div><div className="chosen-count">選択中 <b>{loading.length}</b> 件</div></div>
-          <label className="switch-line power-entry"><input type="checkbox" checked={usePower} onChange={(e) => { setUsePower(e.target.checked); setSaved(false); }} /><span />電源（コンセント）を使用する <small>⚡を付ける搬入物を下で選択</small></label>
-          <div className="loading-options">{loadingOptions.map((item) => <div className="loading-option" key={item}><button className={loading.includes(item) ? "is-selected" : ""} onClick={() => toggleLoading(item)}>{loading.includes(item) ? "✓" : "＋"} {item}</button>{loading.includes(item) && <button className={`power-choice ${poweredLoading.includes(item) ? "is-powered" : ""}`} onClick={() => { setPoweredLoading((now) => now.includes(item) ? now.filter((current) => current !== item) : [...now, item]); setUsePower(true); setSaved(false); }} title="この搬入物で電源を使用">⚡</button>}</div>)}</div>
-          <div className="object-palette"><div className="palette-label">選択済みの搬入物を舞台に追加</div>{loading.length ? loading.map((item) => { const meta = loadInItemMeta[item]; return <button key={item} onClick={() => addObject(meta.label, meta.icon, meta.kind, poweredLoading.includes(item))}><span className="tool-icon">{meta.icon}</span><span>{item}{poweredLoading.includes(item) ? " ⚡" : ""}</span></button>; }) : <p className="palette-empty">上の搬入物を選ぶと、ここから舞台へ追加できます。</p>}<div className="palette-label extra-palette-label">その他の備品</div>{palette.map((item) => <button key={item.label} onClick={() => addObject(item.label, item.icon, item.kind)}><span className="tool-icon">{item.icon}</span><span>{item.label}</span></button>)}</div>
+          <div className="equipment-heading"><div><p className="mini-label">LOAD-IN & OBJECT PALETTE</p><h2>搬入物・舞台備品を配置</h2><p>追加したい種類のタグを押すと、舞台図へ1つ追加されます。追加後はドラッグで動かせます。</p></div><div className="chosen-count">配置した種類 <b>{loading.length}</b> 件</div></div>
+          <label className="switch-line power-entry"><input type="checkbox" checked={usePower} onChange={(e) => { setUsePower(e.target.checked); if (!e.target.checked) setPoweredLoading([]); setSaved(false); }} /><span />電源（コンセント）を使用する <small>電源を使う搬入物の⚡をONにします</small></label>
+          <div className="loadin-tag-grid" aria-label="搬入物を舞台へ追加">{loadingOptions.map((item) => { const meta = loadInItemMeta[item]; const placedCount = objects.filter((object) => object.label === meta.label).length; const isPowered = poweredLoading.includes(item); return <div className="loadin-tag" key={item}><button className={placedCount ? "is-placed" : ""} onClick={() => addLoadInObject(item)} aria-label={`${item}を舞台へ追加`}><span className="tool-icon">{meta.icon}</span><span>{item}</span><small>{placedCount ? `配置 ${placedCount}` : "舞台へ追加"}</small></button><button className={`power-choice ${isPowered ? "is-powered" : ""}`} disabled={!usePower || !placedCount} onClick={() => { setPoweredLoading((now) => now.includes(item) ? now.filter((current) => current !== item) : [...now, item]); setSaved(false); }} title={`${item}で電源を使用`}>⚡</button></div>; })}</div>
+          <div className="object-palette"><div className="palette-label">舞台備品</div>{palette.map((item) => <button key={item.label} onClick={() => addObject(item.label, item.icon, item.kind)}><span className="tool-icon">{item.icon}</span><span>{item.label}</span><small>舞台へ追加</small></button>)}</div>
         </section>
 
         <section className="application-card">
