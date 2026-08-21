@@ -53,6 +53,20 @@ async function hmac(value: string) {
   return new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value)));
 }
 
+export async function createSignedValue(value: string) {
+  return `${value}.${bytesToBase64Url(await hmac(value))}`;
+}
+
+export async function verifySignedValue(value: string, expected: string) {
+  const [payload, signature] = value.split(".");
+  if (!payload || !signature || payload !== expected) return false;
+  const actual = bytesToBase64Url(await hmac(payload));
+  if (actual.length !== signature.length) return false;
+  let different = 0;
+  for (let index = 0; index < actual.length; index += 1) different |= actual.charCodeAt(index) ^ signature.charCodeAt(index);
+  return different === 0;
+}
+
 export async function verifyGoogleCredential(credential: string): Promise<AppUser> {
   const parts = credential.split(".");
   if (parts.length !== 3) throw new Error("Googleの認証情報が不正です。");

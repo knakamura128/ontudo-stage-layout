@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { readSession } from "@/app/lib/google-auth";
 import AdminLogin from "./admin-login";
+import DriveConnection from "./drive-connection";
 import SubmissionList from "./submission-list";
 
 export const dynamic = "force-dynamic";
@@ -60,6 +61,8 @@ export default async function AdminPage() {
             <div className="admin-tip"><b>管理者の追加</b><span>追加したいGoogleメールアドレスをお知らせください。すぐに編集権限を付与できます。</span></div>
           </aside>
         </section>
+
+        <DriveConnection />
 
         <SubmissionList />
 
