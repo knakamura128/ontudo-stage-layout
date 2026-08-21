@@ -12,10 +12,20 @@ function database() {
 }
 
 async function ensureSchema(db: D1Database) {
-  schemaReady ??= db.batch([
-    db.prepare("CREATE TABLE IF NOT EXISTS submissions (id INTEGER PRIMARY KEY AUTOINCREMENT, owner_email TEXT NOT NULL UNIQUE, school_name TEXT NOT NULL, program_name TEXT NOT NULL, performer_total INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'draft', payload TEXT NOT NULL, updated_at TEXT NOT NULL, submitted_at TEXT)"),
-    db.prepare("CREATE INDEX IF NOT EXISTS idx_submissions_status_updated_at ON submissions(status, updated_at DESC)"),
-  ]).then(() => undefined);
+  schemaReady ??= (async () => {
+    await db.batch([
+      db.prepare("CREATE TABLE IF NOT EXISTS submissions (id INTEGER PRIMARY KEY AUTOINCREMENT, owner_email TEXT NOT NULL UNIQUE, school_name TEXT NOT NULL, program_name TEXT NOT NULL, performer_total INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'draft', payload TEXT NOT NULL, updated_at TEXT NOT NULL, submitted_at TEXT, drive_file_id TEXT, drive_file_url TEXT, drive_saved_at TEXT)"),
+      db.prepare("CREATE INDEX IF NOT EXISTS idx_submissions_status_updated_at ON submissions(status, updated_at DESC)"),
+    ]);
+    const columns = await db.prepare("PRAGMA table_info(submissions)").all<{ name: string }>();
+    const existing = new Set((columns.results ?? []).map((column) => column.name));
+    const additions = [
+      ["drive_file_id", "ALTER TABLE submissions ADD COLUMN drive_file_id TEXT"],
+      ["drive_file_url", "ALTER TABLE submissions ADD COLUMN drive_file_url TEXT"],
+      ["drive_saved_at", "ALTER TABLE submissions ADD COLUMN drive_saved_at TEXT"],
+    ].filter(([name]) => !existing.has(name)).map(([, query]) => db.prepare(query));
+    if (additions.length) await db.batch(additions);
+  })();
   await schemaReady;
 }
 
@@ -53,7 +63,8 @@ export async function POST(request: Request) {
     const ownerKey = user?.role === "admin" ? user.email : `guest:${guestKey}`;
     await db.prepare("INSERT INTO submissions (owner_email, school_name, program_name, performer_total, status, payload, updated_at, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(owner_email) DO UPDATE SET school_name = excluded.school_name, program_name = excluded.program_name, performer_total = excluded.performer_total, status = excluded.status, payload = excluded.payload, updated_at = excluded.updated_at, submitted_at = excluded.submitted_at")
       .bind(ownerKey, body.schoolName.trim(), body.programName.trim(), Math.max(0, Number(body.performerTotal) || 0), status, JSON.stringify(body.payload ?? {}), now, body.submit ? now : null).run();
-    return NextResponse.json({ ok: true, status, updatedAt: now });
+    const saved = await db.prepare("SELECT id FROM submissions WHERE owner_email = ?").bind(ownerKey).first<{ id: number }>();
+    return NextResponse.json({ ok: true, id: saved?.id, status, updatedAt: now });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "申請を保存できませんでした。" }, { status: 500 });
   }

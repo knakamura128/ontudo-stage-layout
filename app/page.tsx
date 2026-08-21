@@ -185,6 +185,23 @@ export default function Home() {
     { label: "配置図の演奏者・備品", ok: Object.values(layouts).some((layout) => Object.values(layout.playerLabels).some(Boolean) || layout.objects.length > 0) },
   ];
   const missingChecks = submissionChecks.filter((item) => !item.ok);
+  const createSubmissionPdf = async () => {
+    const target = document.querySelector<HTMLElement>(".submission-pdf");
+    if (!target) throw new Error("提出資料を作成できませんでした。");
+    target.classList.add("pdf-rendering");
+    try {
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+      const canvas = await html2canvas(target, { backgroundColor: "#fff", scale: 2 });
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.94), "JPEG", 0, 0, 210, 297, undefined, "FAST");
+      const bytes = new Uint8Array(await (pdf.output("blob") as Blob).arrayBuffer());
+      let binary = "";
+      for (let index = 0; index < bytes.length; index += 0x8000) binary += String.fromCharCode(...bytes.subarray(index, index + 0x8000));
+      return btoa(binary);
+    } finally {
+      target.classList.remove("pdf-rendering");
+    }
+  };
   const saveRegistration = async (submit: boolean) => {
     setSubmissionMessage("");
     if (submit && missingChecks.length) { setSubmissionMessage("提出前チェックを完了してください。"); return; }
@@ -192,9 +209,15 @@ export default function Home() {
       const submissionKey = authUser ? undefined : (sessionStorage.getItem("music-stage-submission-key") ?? crypto.randomUUID());
       if (submissionKey) sessionStorage.setItem("music-stage-submission-key", submissionKey);
       const response = await fetch("/api/submissions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schoolName, programName: programs[0], performerTotal, submit, submissionKey, submissionId: editingSubmissionId ?? undefined, payload: { layouts, programs, counts, carDelivery, deliveryDate, soundVideo, soundCue, media, usePower, usePiano, useChildPianoBench, bringChildPianoBench, loading, poweredLoading, notes } }) });
-      const data = await response.json() as { error?: string };
+      const data = await response.json() as { id?: number; error?: string };
       if (!response.ok) throw new Error(data.error || "保存できませんでした。");
-      setSaved(true); setSubmissionMessage(submit ? (editingSubmissionId ? "修正内容を提出済みに更新しました。" : "提出しました。管理者ページで提出状況を確認できます。") : "下書きを保存しました。");
+      if (submit) {
+        const pdfBase64 = await createSubmissionPdf();
+        const driveResponse = await fetch("/api/submissions/drive", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ submissionId: data.id ?? editingSubmissionId, submissionKey, pdfBase64 }) });
+        const driveData = await driveResponse.json() as { error?: string };
+        if (!driveResponse.ok) throw new Error(driveData.error || "Google DriveへPDFを保存できませんでした。");
+      }
+      setSaved(true); setSubmissionMessage(submit ? (editingSubmissionId ? "修正内容を提出済みに更新し、Google Driveの提出資料も更新しました。" : "提出しました。提出資料PDFをGoogle Driveへ保存しました。") : "下書きを保存しました。");
     } catch (error) { setSubmissionMessage(error instanceof Error ? error.message : "保存できませんでした。"); }
   };
 
