@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type StageObject = { id: number; label: string; icon: string; kind: "instrument" | "stand" | "chair"; x: number; y: number; power: boolean };
 type StagePoint = { left: number; top: number };
@@ -11,6 +11,7 @@ type Submission = { id: number; school_name: string; program_name: string; perfo
 type PdfPage = { submission: Submission; payload: SubmissionPayload; programIndex: number; programName: string; performerTotal: number; layout: ProgramLayout };
 
 const playerSlots = Array.from({ length: 100 }, (_, index) => index);
+const toshimaElementarySchools = ["仰高小学校", "駒込小学校", "巣鴨小学校", "清和小学校", "西巣鴨小学校", "豊成小学校", "朋有小学校", "朝日小学校", "池袋第一小学校", "池袋小学校", "南池袋小学校", "高南小学校", "目白小学校", "長崎小学校", "要小学校", "椎名町小学校", "富士見台小学校", "千早小学校", "高松小学校", "さくら小学校", "池袋本町小学校"];
 
 function fallbackPosition(index: number, fanLayout: boolean): StagePoint {
   if (index < 14) return { left: Number((22 + index * (56 / 13)).toFixed(3)), top: 13 };
@@ -30,6 +31,8 @@ function valueOrNone(value?: string) { return value?.trim() || "なし"; }
 function parsePayload(item: Submission): SubmissionPayload {
   try { return JSON.parse(item.payload) as SubmissionPayload; } catch { return {}; }
 }
+
+function normalizeSchoolName(value: string) { return value.replace(/[\s　]/g, "").replace(/^豊島区立/, "").replace(/小学校$/, ""); }
 
 function pdfPages(items: Submission[]) {
   return items.flatMap((submission): PdfPage[] => {
@@ -67,6 +70,7 @@ export default function SubmissionList() {
   const [message, setMessage] = useState("");
   const [creating, setCreating] = useState(false);
   const load = () => { setMessage("読み込み中…"); fetch("/api/submissions").then(async (response) => { const data = await response.json() as { submissions?: Submission[]; error?: string }; if (!response.ok) throw new Error(data.error); return data.submissions ?? []; }).then((data) => { setItems(data); setSelectedIds((now) => now.filter((id) => data.some((item) => item.id === id && item.status === "submitted"))); setMessage(""); }).catch((error: Error) => setMessage(error.message || "申請一覧を取得できませんでした。")); };
+  useEffect(() => { const timer = window.setTimeout(load, 180); return () => window.clearTimeout(timer); }, []);
   const selectedItems = useMemo(() => (items ?? []).filter((item) => selectedIds.includes(item.id)), [items, selectedIds]);
   const renderPages = useMemo(() => pdfPages(renderItems), [renderItems]);
   const toggle = (id: number) => setSelectedIds((now) => now.includes(id) ? now.filter((value) => value !== id) : [...now, id]);
@@ -93,8 +97,15 @@ export default function SubmissionList() {
     } catch (error) { setMessage(error instanceof Error ? error.message : "PDFを作成できませんでした。"); } finally { setRenderItems([]); setCreating(false); }
   };
   const submitted = (items ?? []).filter((item) => item.status === "submitted");
+  const schoolStatuses = useMemo(() => toshimaElementarySchools.map((school) => {
+    const related = (items ?? []).filter((item) => normalizeSchoolName(item.school_name) === normalizeSchoolName(school));
+    return { school, status: related.some((item) => item.status === "submitted") ? "submitted" : related.length ? "draft" : "waiting" };
+  }), [items]);
+  const submittedSchoolCount = schoolStatuses.filter((item) => item.status === "submitted").length;
+  const draftSchoolCount = schoolStatuses.filter((item) => item.status === "draft").length;
+  const progress = (submittedSchoolCount / toshimaElementarySchools.length) * 100;
   return <section className="admin-panel submission-panel" id="submissions"><div className="admin-panel-heading"><div><p className="mini-label">SUBMISSIONS</p><h2>申請一覧・提出状況</h2></div><button onClick={load}>{items ? "更新" : "一覧を読み込む"}</button></div>
-    {items?.length ? <><div className="submission-bulk-bar"><label><input type="checkbox" checked={submitted.length > 0 && selectedIds.length === submitted.length} onChange={toggleAll} /> 提出済みをすべて選択</label><span>{selectedIds.length}校を選択中</span><button className="bulk-pdf-button" onClick={() => void download(selectedItems)} disabled={!selectedIds.length || creating}>{creating ? "PDFを作成中…" : `選択した資料をまとめてPDF化（${selectedIds.length}校）`}</button></div><div className="submission-table">{items.map((item) => <article key={item.id}><label className="submission-check"><input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => toggle(item.id)} disabled={item.status !== "submitted"} aria-label={`${item.school_name}を選択`} /></label><div><b>{item.school_name}</b><span>{item.program_name}・{item.performer_total}名</span></div><time>{new Intl.DateTimeFormat("ja-JP", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Tokyo" }).format(new Date(item.updated_at))}</time><strong className={item.status}>{item.status === "submitted" ? "提出済み" : "下書き"}</strong><div className="submission-row-actions"><Link href={`/admin/submissions/${item.id}`}>資料を参照</Link>{item.status === "submitted" && <button onClick={() => void download([item])} disabled={creating}>PDFをダウンロード</button>}</div></article>)}</div></> : message ? <p className="admin-empty">{message}</p> : items ? <p className="admin-empty">まだ保存された申請はありません。</p> : <p className="admin-empty">必要なときに「一覧を読み込む」を押してください。</p>}
+    {items ? <><section className="school-status-board" aria-label="豊島区立小学校の提出状況"><div className="school-progress"><div className="progress-ring" style={{ background: `conic-gradient(#42a879 ${progress}%, #e8eeec 0)` }}><div><b>{submittedSchoolCount}</b><span>/ {toshimaElementarySchools.length} 校</span></div></div><div><p className="mini-label">TOSHIMA ELEMENTARY SCHOOLS</p><h3>豊島区立小学校の提出状況</h3><p>池袋第三小学校を除く {toshimaElementarySchools.length} 校</p></div></div><div className="school-status-summary"><span className="submitted"><b>{submittedSchoolCount}</b>提出済み</span><span className="draft"><b>{draftSchoolCount}</b>下書きあり</span><span className="waiting"><b>{toshimaElementarySchools.length - submittedSchoolCount - draftSchoolCount}</b>未提出</span></div><div className="school-status-grid">{schoolStatuses.map((item) => <div key={item.school} className={`school-status ${item.status}`}><i>{item.status === "submitted" ? "✓" : item.status === "draft" ? "…" : ""}</i><span>{item.school}</span><small>{item.status === "submitted" ? "提出済み" : item.status === "draft" ? "下書き" : "未提出"}</small></div>)}</div></section>{items.length ? <><div className="submission-bulk-bar"><label><input type="checkbox" checked={submitted.length > 0 && selectedIds.length === submitted.length} onChange={toggleAll} /> 提出済みをすべて選択</label><span>{selectedIds.length}校を選択中</span><button className="bulk-pdf-button" onClick={() => void download(selectedItems)} disabled={!selectedIds.length || creating}>{creating ? "PDFを作成中…" : `選択した資料をまとめてPDF化（${selectedIds.length}校）`}</button></div><div className="submission-table">{items.map((item) => <article key={item.id}><label className="submission-check"><input type="checkbox" checked={selectedIds.includes(item.id)} onChange={() => toggle(item.id)} disabled={item.status !== "submitted"} aria-label={`${item.school_name}を選択`} /></label><div><b>{item.school_name}</b><span>{item.program_name}・{item.performer_total}名</span></div><time>{new Intl.DateTimeFormat("ja-JP", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Tokyo" }).format(new Date(item.updated_at))}</time><strong className={item.status}>{item.status === "submitted" ? "提出済み" : "下書き"}</strong><div className="submission-row-actions"><Link href={`/admin/submissions/${item.id}`}>資料を参照</Link>{item.status === "submitted" && <button onClick={() => void download([item])} disabled={creating}>PDFをダウンロード</button>}</div></article>)}</div></> : <p className="admin-empty">まだ保存された申請はありません。</p>}</> : <p className="admin-empty">{message || "提出状況を読み込み中…"}</p>}
     {items && <div className="admin-pdf-pages" aria-hidden="true">{renderPages.map((page, index) => <SubmissionPdfPage key={`${page.submission.id}-${page.programIndex}-${index}`} page={page} />)}</div>}
     {items?.length ? <p className="admin-empty submission-message" aria-live="polite">{message || "「資料を参照」で内容確認、「PDFをダウンロード」で学校ごとの資料を出力できます。"}</p> : null}
   </section>;
