@@ -33,6 +33,11 @@ function safeFileName(value: string) {
   return value.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, " ").trim().slice(0, 70) || "未入力";
 }
 
+function driveErrorMessage(message: string | undefined, fallback: string) {
+  if (message?.includes("Service Accounts do not have storage quota")) return "提出先フォルダを共有ドライブ内に変更してください。サービスアカウントはマイドライブへ保存できません。";
+  return message || fallback;
+}
+
 async function driveToken(credentials: ServiceAccount) {
   const pem = credentials.private_key.replace(/-----BEGIN PRIVATE KEY-----|-----END PRIVATE KEY-----|\s/g, "");
   const privateKey = decodeBase64(pem);
@@ -53,14 +58,14 @@ async function createDriveFile(accessToken: string, folderId: string, fileName: 
   const suffix = `\r\n--${boundary}--`;
   const response = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink", { method: "POST", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": `multipart/related; boundary=${boundary}` }, body: new Blob([prefix, pdf, suffix]) });
   const result = await response.json() as { id?: string; webViewLink?: string; error?: { message?: string } };
-  if (!response.ok || !result.id) throw new Error(result.error?.message || "Google DriveへPDFを保存できませんでした。");
+  if (!response.ok || !result.id) throw new Error(driveErrorMessage(result.error?.message, "Google DriveへPDFを保存できませんでした。"));
   return result;
 }
 
 async function replaceDriveFile(accessToken: string, fileId: string, pdf: Uint8Array) {
   const response = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${encodeURIComponent(fileId)}?uploadType=media&fields=id,webViewLink`, { method: "PATCH", headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/pdf" }, body: pdf });
   const result = await response.json() as { id?: string; webViewLink?: string; error?: { message?: string } };
-  if (!response.ok || !result.id) throw new Error(result.error?.message || "Google Drive上のPDFを更新できませんでした。");
+  if (!response.ok || !result.id) throw new Error(driveErrorMessage(result.error?.message, "Google Drive上のPDFを更新できませんでした。"));
   return result;
 }
 
