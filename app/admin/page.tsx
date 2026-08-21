@@ -34,7 +34,6 @@ export default async function AdminPage() {
       <div className="admin-wrap">
         <section className="admin-hero">
           <div><p className="section-kicker">ADMIN CONSOLE</p><h1>運用管理</h1><p>学校から提出された舞台配置・備品資料を確認し、教育委員会への提出用に整えます。</p></div>
-          <Link href="#submissions" className="admin-primary-link">申請一覧を開く <span>→</span></Link>
         </section>
 
         <section className="admin-summary" aria-label="運用状況">
