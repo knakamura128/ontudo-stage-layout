@@ -102,6 +102,7 @@ export default function Home() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState("");
   const [submissionMessage, setSubmissionMessage] = useState("");
+  const [submitModal, setSubmitModal] = useState<"submitting" | "success" | null>(null);
   const [editingSubmissionId, setEditingSubmissionId] = useState<number | null>(null);
 
   const completeGoogleSignIn = async (credential: string) => {
@@ -193,6 +194,7 @@ export default function Home() {
   const saveRegistration = async (submit: boolean) => {
     setSubmissionMessage("");
     if (submit && missingChecks.length) { setSubmissionMessage("提出前チェックを完了してください。"); return; }
+    if (submit) setSubmitModal("submitting");
     try {
       const submissionKey = authUser ? undefined : (sessionStorage.getItem("music-stage-submission-key") ?? crypto.randomUUID());
       if (submissionKey) sessionStorage.setItem("music-stage-submission-key", submissionKey);
@@ -201,7 +203,8 @@ export default function Home() {
       const data = await response.json() as { id?: number; error?: string };
       if (!response.ok) throw new Error(data.error || "保存できませんでした。");
       setSaved(true); setSubmissionMessage(submit ? (editingSubmissionId ? "修正内容を提出済みに更新しました。" : "提出しました。設営資料は管理者ページで確認・PDF作成できます。") : "下書きを保存しました。");
-    } catch (error) { setSubmissionMessage(error instanceof Error ? error.message : "保存できませんでした。"); }
+      if (submit) setSubmitModal("success");
+    } catch (error) { if (submit) setSubmitModal(null); setSubmissionMessage(error instanceof Error ? error.message : "保存できませんでした。"); }
   };
 
   const layoutKey = separatePrograms ? activeProgram : 0;
@@ -401,10 +404,11 @@ export default function Home() {
 
         <section className="notes-card"><div><p className="mini-label">REQUESTS FOR SETUP STAFF</p><h2>その他・設営担当への要望</h2><p>設営に関して伝えておきたいことがあれば、任意で入力してください。</p></div><textarea value={notes} onChange={(event) => { setNotes(event.target.value); setSaved(false); }} placeholder="任意入力" /></section>
         <section className="precheck-card" id="precheck"><div><p className="mini-label">PRE-SUBMISSION CHECK</p><h2>提出前チェック</h2><p>不足している項目を確認してから提出してください。</p></div><ul>{submissionChecks.map((item) => <li key={item.label} className={item.ok ? "is-ok" : ""}>{item.ok ? "✓" : "!"} {item.label}<span>{item.ok ? "入力済み" : "未入力"}</span></li>)}</ul></section>
-        <section className="bottom-card" id="submit"><div><p className="mini-label">SUBMIT</p><h2>この内容で舞台配置を登録しますか？</h2><p>{submissionMessage || "提出前チェックを確認後、内容を提出してください。"}</p></div><div className="submit-actions"><button className="pdf-button" onClick={() => void saveRegistration(false)}>下書きを保存</button><button className={`submit-button ${saved ? "is-done" : ""}`} onClick={() => void saveRegistration(true)}>{saved ? "✓　提出済み" : "舞台配置を提出する　→"}</button></div></section>
+        <section className="bottom-card" id="submit"><div><p className="mini-label">SUBMIT</p><h2>この内容で舞台配置を登録しますか？</h2><p>{submissionMessage || "提出前チェックを確認後、内容を提出してください。"}</p></div><div className="submit-actions"><button className="pdf-button" onClick={() => void saveRegistration(false)} disabled={submitModal === "submitting"}>下書きを保存</button><button className={`submit-button ${saved ? "is-done" : ""}`} onClick={() => void saveRegistration(true)} disabled={submitModal === "submitting"} aria-busy={submitModal === "submitting"}>{submitModal === "submitting" ? "提出中…" : saved ? "✓　提出済み" : "舞台配置を提出する　→"}</button></div></section>
         <section className="submission-pdf" aria-hidden="true"><header><p>令和8年度　音楽のつどい</p><h1>舞台配置・使用機器等 提出資料</h1><small>作成日　{new Intl.DateTimeFormat("ja-JP", { dateStyle: "long", timeZone: "Asia/Tokyo" }).format(new Date())}</small></header><div className="pdf-meta"><div><span>学校名</span><b>{schoolName || "未入力"}</b></div><div><span>出演人数</span><b>{(separatePrograms ? programPerformers[activeProgram] : performerTotal) || placedPlayerCount}名</b></div><div><span>演目</span><b>{programs[activeProgram] || "未入力"}</b></div></div><section className="pdf-section"><h2>舞台配置図</h2><div className="pdf-stage"><div className="pdf-piano">PIANO</div><div className="pdf-riser pdf-riser-top">ひな壇 2段目　椅子14</div><div className="pdf-riser pdf-riser-low">ひな壇 1段目　椅子16</div>{players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "player"; return label ? <span key={player.index} className={`pdf-player ${seat}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }}>{label}</span> : null; })}{objects.map((item) => <span key={item.id} className={`pdf-object ${item.kind}`} style={{ left: `${item.x}%`, top: `${item.y}%` }}>{item.icon} {item.label}{item.power ? " ⚡" : ""}</span>)}<div className="pdf-audience">客　席</div></div></section><div className="pdf-info-grid"><section><h2>利用備品・数量</h2><dl><div><dt>ピアノ</dt><dd>{usePiano ? "使用" : "不使用"}</dd></div><div><dt>マイク</dt><dd>{counts.microphones}本</dd></div><div><dt>マイクスタンド</dt><dd>{counts.micStands}本</dd></div><div><dt>演奏者椅子</dt><dd>{counts.playerChairs}脚</dd></div><div><dt>折り畳み椅子</dt><dd>{counts.foldingChairs}脚</dd></div><div><dt>電源（コンセント）</dt><dd>{usePower ? "使用" : "不使用"}</dd></div></dl></section><section><h2>搬入・音響</h2><dl><div><dt>車での搬入</dt><dd>{carDelivery}</dd></div><div><dt>搬入希望日</dt><dd>{deliveryDate}</dd></div><div><dt>搬入物</dt><dd>{loading.join("、") || "なし"}</dd></div><div><dt>音響・映像備品</dt><dd>{soundVideo}</dd></div><div><dt>音出し指示</dt><dd>{soundCue}</dd></div></dl></section></div><section className="pdf-notes"><h2>その他・設営担当への要望</h2><p>{notes || "なし"}</p></section><footer>教育委員会提出用／当日設営用資料</footer></section>
       </div>
     </section>
+    {submitModal && <div className="submit-modal-backdrop" role="presentation"><section className="submit-modal" role="dialog" aria-modal="true" aria-labelledby="submit-modal-title"><div className={`submit-modal-icon ${submitModal}`}>{submitModal === "success" ? "✓" : "…"}</div><p className="mini-label">{submitModal === "success" ? "SUBMISSION COMPLETE" : "SUBMITTING"}</p><h2 id="submit-modal-title">{submitModal === "success" ? "舞台配置を提出しました" : "提出内容を送信しています"}</h2><p>{submitModal === "success" ? <>{schoolName || "学校"}の提出内容を受け付けました。管理者ページで設営資料として確認・PDF作成できます。学校担当者の操作はこれで完了です。</> : "画面を閉じずに、そのままお待ちください。"}</p>{submitModal === "success" && <button onClick={() => setSubmitModal(null)} autoFocus>確認しました</button>}</section></div>}
   </main>;
 }
 
