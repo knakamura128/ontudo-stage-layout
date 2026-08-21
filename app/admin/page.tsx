@@ -2,7 +2,6 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { readSession } from "@/app/lib/google-auth";
 import AdminLogin from "./admin-login";
-import DriveConnection from "./drive-connection";
 import SubmissionList from "./submission-list";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +40,7 @@ export default async function AdminPage() {
         <section className="admin-summary" aria-label="運用状況">
           <article><span className="admin-card-icon coral">⌘</span><div><small>ログイン権限</small><b>管理者</b><p>申請一覧・設営資料を確認できます</p></div></article>
           <article><span className="admin-card-icon blue">◎</span><div><small>学校担当者の入稿</small><b>どなたでも提出可</b><p>学校は提出後の対応は不要です</p></div></article>
-          <article><span className="admin-card-icon green">▣</span><div><small>設営資料</small><b>学校ごとにPDF作成</b><p>申請詳細からA4・1枚で出力できます</p></div></article>
+          <article><span className="admin-card-icon green">▣</span><div><small>設営資料</small><b>管理者画面でPDF作成</b><p>学校ごと・選択した学校をまとめて出力できます</p></div></article>
         </section>
 
         <section className="admin-grid">
@@ -49,7 +48,7 @@ export default async function AdminPage() {
             <div className="admin-panel-heading"><div><p className="mini-label">WORKFLOW</p><h2>管理者の作業</h2></div><span>3 STEP</span></div>
             <ol className="admin-workflow">
               <li><i>1</i><div><b>提出内容を確認</b><p>学校から届いた舞台配置・備品の申請を一覧で確認します。</p></div><Link href="#submissions">一覧を見る →</Link></li>
-              <li><i>2</i><div><b>学校ごとの設営資料を作成</b><p>申請詳細を開き、舞台図・備品・搬入内容をA4・1枚のPDFにします。</p></div><Link href="#submissions">詳細を開く →</Link></li>
+              <li><i>2</i><div><b>設営資料PDFを作成</b><p>学校ごとの資料を確認・ダウンロードし、必要な学校を選んで1つのPDFにもまとめられます。</p></div><Link href="#submissions">PDFを作成 →</Link></li>
               <li><i>3</i><div><b>教育委員会へ提出・当日配布</b><p>印刷した資料を教育委員会へ渡し、打ち合わせ当日の設営資料として配布します。</p></div><Link href="#submissions">申請を確認 →</Link></li>
             </ol>
           </article>
@@ -61,8 +60,6 @@ export default async function AdminPage() {
             <div className="admin-tip"><b>管理者の追加</b><span>追加したいGoogleメールアドレスをお知らせください。すぐに編集権限を付与できます。</span></div>
           </aside>
         </section>
-
-        <DriveConnection />
 
         <SubmissionList />
 

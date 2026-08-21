@@ -14,17 +14,9 @@ function database() {
 async function ensureSchema(db: D1Database) {
   schemaReady ??= (async () => {
     await db.batch([
-      db.prepare("CREATE TABLE IF NOT EXISTS submissions (id INTEGER PRIMARY KEY AUTOINCREMENT, owner_email TEXT NOT NULL UNIQUE, school_name TEXT NOT NULL, program_name TEXT NOT NULL, performer_total INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'draft', payload TEXT NOT NULL, updated_at TEXT NOT NULL, submitted_at TEXT, drive_file_id TEXT, drive_file_url TEXT, drive_saved_at TEXT)"),
+      db.prepare("CREATE TABLE IF NOT EXISTS submissions (id INTEGER PRIMARY KEY AUTOINCREMENT, owner_email TEXT NOT NULL UNIQUE, school_name TEXT NOT NULL, program_name TEXT NOT NULL, performer_total INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'draft', payload TEXT NOT NULL, updated_at TEXT NOT NULL, submitted_at TEXT)"),
       db.prepare("CREATE INDEX IF NOT EXISTS idx_submissions_status_updated_at ON submissions(status, updated_at DESC)"),
     ]);
-    const columns = await db.prepare("PRAGMA table_info(submissions)").all<{ name: string }>();
-    const existing = new Set((columns.results ?? []).map((column) => column.name));
-    const additions = [
-      ["drive_file_id", "ALTER TABLE submissions ADD COLUMN drive_file_id TEXT"],
-      ["drive_file_url", "ALTER TABLE submissions ADD COLUMN drive_file_url TEXT"],
-      ["drive_saved_at", "ALTER TABLE submissions ADD COLUMN drive_saved_at TEXT"],
-    ].filter(([name]) => !existing.has(name)).map(([, query]) => db.prepare(query));
-    if (additions.length) await db.batch(additions);
   })();
   await schemaReady;
 }
@@ -35,7 +27,7 @@ export async function GET(request: Request) {
     if (!user || user.role !== "admin") return NextResponse.json({ error: "管理者としてログインしてください。" }, { status: 403 });
     const db = database();
     await ensureSchema(db);
-    const result = await db.prepare("SELECT id, owner_email, school_name, program_name, performer_total, status, updated_at, submitted_at FROM submissions ORDER BY CASE status WHEN 'submitted' THEN 0 ELSE 1 END, updated_at DESC").all<SubmissionRow>();
+    const result = await db.prepare("SELECT id, owner_email, school_name, program_name, performer_total, status, updated_at, submitted_at, payload FROM submissions ORDER BY CASE status WHEN 'submitted' THEN 0 ELSE 1 END, updated_at DESC").all<SubmissionRow & { payload: string }>();
     return NextResponse.json({ submissions: result.results ?? [] });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "申請一覧を取得できませんでした。" }, { status: 500 });
