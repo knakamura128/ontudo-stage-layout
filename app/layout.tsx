@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./stage-consistency.css";
 
 export const metadata: Metadata = {
   title: "音楽のつどい｜舞台配置",

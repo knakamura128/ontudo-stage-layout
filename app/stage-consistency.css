@@ -1,0 +1,52 @@
+/* 舞台は常に「幅15m × 奥行12m」の同じ座標面として描画する。 */
+.stage-floor.large-floor,
+.setup-stage-map,
+.submission-pdf .pdf-stage,
+.submission-pdf.pdf-rendering .pdf-stage {
+  aspect-ratio: 15 / 12;
+  height: auto;
+}
+
+/* 固定備品も、端末固有のpx値ではなく舞台に対する割合で配置する。 */
+.stage-floor .fixed-piano,
+.setup-stage-map .setup-piano,
+.submission-pdf .pdf-stage .pdf-piano,
+.submission-pdf.pdf-rendering .pdf-stage .pdf-piano {
+  left: 4%;
+  top: 21%;
+  width: 14%;
+  height: auto;
+  aspect-ratio: 100 / 74;
+  transform: rotate(-22deg);
+  transform-origin: center;
+}
+
+.stage-floor .fixed-piano::before {
+  left: 8%;
+  bottom: 11%;
+  width: 31%;
+  height: 70%;
+}
+
+.stage-floor .fixed-piano span { font-size: clamp(7px, 1vw, 9px); }
+.stage-floor .fixed-piano b { font-size: clamp(6px, .9vw, 8px); margin-left: 17%; }
+
+/* ひな壇も同じ基準座標を共有する。 */
+.stage-floor .riser,
+.setup-stage-map .setup-riser,
+.submission-pdf .pdf-stage .pdf-riser,
+.submission-pdf.pdf-rendering .pdf-stage .pdf-riser {
+  left: 12%;
+  right: 10%;
+  height: 14.8%;
+}
+
+.stage-floor .riser-low,
+.setup-stage-map .setup-riser-low,
+.submission-pdf .pdf-stage .pdf-riser-low,
+.submission-pdf.pdf-rendering .pdf-stage .pdf-riser-low {
+  left: 17%;
+  right: 15%;
+  top: 22%;
+  height: 12.4%;
+}
