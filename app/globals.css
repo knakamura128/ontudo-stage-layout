@@ -96,6 +96,8 @@ button{cursor:pointer}
 .player-dot.player{background:#fffdfa;border-color:#3973a7}
 .player-dot.folding{background:#f3f7fb;border-style:dashed;border-color:#6087a3}
 .player-dot.folding:before{content:"▱";font-size:13px;line-height:.7;color:#4d728e}
+.player-dot.none{min-width:26px;padding:1px 4px;border-radius:999px;background:#fff7f3;border-color:#d87967;color:#a24f42}
+.player-dot.none:before{content:"●";position:static;margin-right:2px;color:#d45f50;font-size:7px}
 .player-dot span{max-width:32px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .player-dot.is-selected{z-index:9;border:2px solid #d65348;background:#fff5f3;outline:2px solid #f4b0a9;box-shadow:0 0 0 3px #f9d9d5}
 .player-dot:active{cursor:grabbing}
@@ -121,8 +123,7 @@ button{cursor:pointer}
 .performer-editor-selected{border:2px solid #d65348;background:#fff7f5;box-shadow:0 0 0 3px #f9d9d5}
 .performer-editor-selected b{color:#a84238}.performer-editor-selected small{color:#9a5c55;font-size:10px}.performer-editor-selected .delete-player{margin-left:auto;border:1px solid #bd5045;background:#fff;color:#ac463c;padding:5px 9px;border-radius:4px;font-weight:700}
 .player-editor{margin-top:12px;padding:10px 11px;border:1px solid #d7e3e4;border-radius:5px;background:#f5f9f8;display:flex;align-items:center;gap:8px;color:#4d6572;font-size:11px}
-.player-editor label{display:flex;align-items:center;gap:8px;font-weight:700;color:#2f5761}
-.player-editor input{height:28px;width:142px;border:1px solid #cddadd;border-radius:4px;background:#fff;padding:0 8px;color:#385368;font-size:11px}
+.player-editor>b{color:#2f5761;font-size:12px}
 .player-editor button{height:28px;border:1px solid #5c899d;border-radius:4px;background:#40758a;color:#fff;padding:0 11px;font-size:11px;font-weight:700}
 .player-editor small{color:#7b8a92;font-size:10px}
 .seat-picker{display:flex;gap:4px}
