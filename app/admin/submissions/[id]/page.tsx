@@ -62,7 +62,7 @@ export default async function SubmissionDetail({ params }: { params: Promise<{ i
         <section className="setup-stage-section"><div className="setup-section-head"><h2>舞台配置図</h2><span>客席側から見た配置　幅 15m × 奥行 12m</span></div><div className="setup-stage-map">
           <div className="setup-piano">PIANO</div><div className="setup-riser setup-riser-top">ひな壇 2段目（椅子14）<small>横12.6m × 縦1.2m</small></div><div className="setup-riser setup-riser-low">ひな壇 1段目（椅子16）<small>横10.8m × 縦0.9m</small></div>
           {players.map(([index, label]) => { const playerIndex = Number(index); const point = layout.playerPositions?.[playerIndex] ?? fallbackPosition(playerIndex, Boolean(layout.fanLayout)); const seat = layout.playerSeats?.[playerIndex] ?? "player"; return <span key={index} className={`setup-player ${seat}`} style={{ left: `${point.left}%`, top: `${point.top}%` }}>{label}</span>; })}
-          {objects.map((item) => <span key={item.id} className={`setup-object ${item.kind}`} style={{ left: `${item.x}%`, top: `${item.y}%` }}><i>{item.icon}</i>{item.label}{item.power && <em>⚡</em>}</span>)}
+          {objects.map((item) => <span key={item.id} className={`setup-object ${item.kind}`} style={{ left: `${item.x}%`, top: `${item.y}%` }}><i aria-hidden="true">{item.icon}</i><b>{item.label}</b>{item.power && <em>⚡</em>}</span>)}
           <div className="setup-audience">客　席</div>
         </div><div className="setup-stage-measurements">後方ひな壇：横12.6m × 縦1.2m　／　前方ひな壇：横10.8m × 縦0.9m　／　ひな壇前方から舞台袖まで：5.0m + 1.2m</div><div className="setup-legend"><span><i className="solid" />出演者椅子</span><span><i className="dashed" />折り畳み椅子</span><span>⚡ 電源を使用する備品</span></div>
         </section>
