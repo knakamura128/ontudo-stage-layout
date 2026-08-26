@@ -154,6 +154,7 @@ button{cursor:pointer}
 .count-input small{color:#909ba3;font-size:9px}
 .count-input .count-add{width:auto;padding:0 7px;background:#eef7f6;border-color:#9fc9c3;color:#28645c;font-weight:700}
 .count-input .count-add:disabled{cursor:not-allowed;opacity:.45}
+.quantity-tree{margin:10px 0 4px;border:1px solid #d7e5e5;border-radius:6px;background:#f8fbfb;overflow:hidden}.quantity-total{display:grid;grid-template-columns:1fr auto;align-items:center;gap:3px 8px;padding:9px 10px;border-bottom:1px solid #d7e5e5;background:#edf7f7;color:#426473}.quantity-total span{font-size:11px;font-weight:700}.quantity-total strong{color:#285f72;font-size:16px}.quantity-total small{grid-column:1/-1;color:#7d919a;font-size:9px}.quantity-tree-rows{position:relative;padding:4px 10px 5px 27px}.quantity-tree-rows:before{content:"";position:absolute;left:14px;top:12px;bottom:14px;border-left:1px solid #a6c5c9}.quantity-tree-rows .count-input{position:relative;margin:6px 0}.quantity-tree-rows .count-input:before{content:"";position:absolute;left:-13px;top:50%;width:9px;border-top:1px solid #a6c5c9}.quantity-tree-rows .count-input:last-child:after{content:"";position:absolute;left:-14px;bottom:-8px;width:2px;height:50%;background:#f8fbfb}
 .move-help{margin:10px 0 0;color:#798a94;font-size:10px;line-height:1.5}
 .equipment-workspace{margin-top:24px;padding:22px 24px}
 .equipment-heading{display:flex;align-items:flex-start;justify-content:space-between}
