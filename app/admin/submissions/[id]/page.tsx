@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 type StageObject = { id: number; label: string; icon: string; kind: "instrument" | "stand" | "chair"; x: number; y: number; power: boolean };
 type StagePoint = { left: number; top: number };
 type ProgramLayout = { fanLayout?: boolean; objects?: StageObject[]; playerPositions?: Record<number, StagePoint>; playerLabels?: Record<number, string>; playerSeats?: Record<number, "player" | "folding" | "none"> };
-type SubmissionPayload = { layouts?: Record<number, ProgramLayout>; programs?: string[]; counts?: Record<string, number>; loading?: string[]; notes?: string; carDelivery?: string; deliveryDate?: string; soundVideo?: string; soundCue?: string; usePower?: boolean; usePiano?: boolean; useChildPianoBench?: boolean; bringChildPianoBench?: boolean };
+type SubmissionPayload = { layouts?: Record<number, ProgramLayout>; programs?: string[]; stageSize?: { width?: number; depth?: number }; counts?: Record<string, number>; loading?: string[]; notes?: string; carDelivery?: string; deliveryDate?: string; soundVideo?: string; soundCue?: string; usePower?: boolean; usePiano?: boolean; useChildPianoBench?: boolean; bringChildPianoBench?: boolean };
 type Row = { id: number; school_name: string; program_name: string; performer_total: number; status: "draft" | "submitted"; payload: string; submitted_at: string | null };
 
 function fallbackPosition(index: number, fanLayout: boolean): StagePoint {
@@ -49,6 +49,7 @@ export default async function SubmissionDetail({ params }: { params: Promise<{ i
   const layout = payload.layouts?.[programIndex] ?? payload.layouts?.[0] ?? {};
   const players = Object.entries(layout.playerLabels ?? {}).filter(([, label]) => Boolean(label));
   const objects = layout.objects ?? [];
+  const stageSize = { width: Math.min(50, Math.max(1, Number(payload.stageSize?.width) || 15)), depth: Math.min(50, Math.max(1, Number(payload.stageSize?.depth) || 12)) };
   const submittedAt = row.submitted_at ? new Intl.DateTimeFormat("ja-JP", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Tokyo" }).format(new Date(row.submitted_at)) : "未提出";
 
   return <main className="admin-shell">
@@ -59,7 +60,7 @@ export default async function SubmissionDetail({ params }: { params: Promise<{ i
       <section className="setup-sheet">
         <header className="setup-sheet-header"><div><p>令和8年度　音楽のつどい</p><h1>舞台設営・備品配置資料</h1></div><aside><b>{row.status === "submitted" ? "提出済み" : "下書き"}</b><small>{submittedAt}</small></aside></header>
         <div className="setup-sheet-meta"><div><span>学校名</span><b>{row.school_name}</b></div><div><span>出演人数</span><b>{row.performer_total}名</b></div><div><span>配置</span><b>{row.program_name === "配置図共通" ? "共通配置" : row.program_name}</b></div></div>
-        <section className="setup-stage-section"><div className="setup-section-head"><h2>舞台配置図</h2><span>客席側から見た配置</span></div><div className="setup-stage-map">
+        <section className="setup-stage-section"><div className="setup-section-head"><h2>舞台配置図</h2><span>客席側から見た配置　幅 {stageSize.width}m × 奥行 {stageSize.depth}m</span></div><div className="setup-stage-map" style={{ aspectRatio: `${stageSize.width} / ${stageSize.depth}` }}>
           <div className="setup-piano">PIANO</div><div className="setup-riser setup-riser-top">ひな壇 2段目（椅子14）</div><div className="setup-riser setup-riser-low">ひな壇 1段目（椅子16）</div>
           {players.map(([index, label]) => { const playerIndex = Number(index); const point = layout.playerPositions?.[playerIndex] ?? fallbackPosition(playerIndex, Boolean(layout.fanLayout)); const seat = layout.playerSeats?.[playerIndex] ?? "player"; return <span key={index} className={`setup-player ${seat}`} style={{ left: `${point.left}%`, top: `${point.top}%` }}>{label}</span>; })}
           {objects.map((item) => <span key={item.id} className={`setup-object ${item.kind}`} style={{ left: `${item.x}%`, top: `${item.y}%` }}><i>{item.icon}</i>{item.label}{item.power && <em>⚡</em>}</span>)}
