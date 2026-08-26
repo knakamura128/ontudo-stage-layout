@@ -98,8 +98,8 @@ button{cursor:pointer}
 .player-dot.player{background:#fffdfa;border-color:#3973a7}
 .player-dot.folding{background:#f3f7fb;border-style:dashed;border-color:#6087a3}
 .player-dot.folding:before{content:"▱";font-size:13px;line-height:.7;color:#4d728e}
-.player-dot.none{min-width:26px;padding:1px 4px;border-radius:999px;background:#fff7f3;border-color:#d87967;color:#a24f42}
-.player-dot.none:before{content:"●";position:static;margin-right:2px;color:#d45f50;font-size:7px}
+.player-dot.none{min-width:26px;padding:1px 4px;border-radius:999px;background:#eef7fb;border-color:#5b90aa;color:#2f617c}
+.player-dot.none:before{content:"●";position:static;margin-right:2px;color:#4d89a8;font-size:7px}
 .player-dot span{max-width:32px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .player-dot.is-selected{z-index:9;border:2px solid #d65348;background:#fff5f3;outline:2px solid #f4b0a9;box-shadow:0 0 0 3px #f9d9d5}
 .player-dot:active{cursor:grabbing}
