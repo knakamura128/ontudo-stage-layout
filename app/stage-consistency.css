@@ -1,4 +1,4 @@
-/* 舞台は入力された寸法比の同じ座標面として描画する。 */
+/* 舞台は幅15m × 奥行12mで固定。同じ座標面として描画する。 */
 .stage-floor.large-floor,
 .setup-stage-map,
 .submission-pdf .pdf-stage,
