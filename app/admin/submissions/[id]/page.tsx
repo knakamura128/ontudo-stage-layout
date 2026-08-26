@@ -32,6 +32,24 @@ function fallbackPosition(index: number, fanLayout: boolean): StagePoint {
   return { left: Number((50 + Math.cos((angle * Math.PI) / 180) * radius * 1.28).toFixed(3)), top: Number((82 + Math.sin((angle * Math.PI) / 180) * radius).toFixed(3)) };
 }
 
+function displayObjectPositions(objects: StageObject[]) {
+  const placed: StagePoint[] = [];
+  const offsets = [
+    { left: 0, top: 0 }, { left: 24, top: -10 }, { left: -24, top: -10 },
+    { left: 24, top: 10 }, { left: -24, top: 10 }, { left: 0, top: 20 },
+    { left: 48, top: 0 }, { left: -48, top: 0 }, { left: 48, top: 20 }, { left: -48, top: 20 },
+  ];
+  return objects.map((item) => {
+    const position = offsets.find((offset) => {
+      const candidate = { left: Math.max(8, Math.min(92, item.x + offset.left)), top: Math.max(7, Math.min(91, item.y + offset.top)) };
+      return !placed.some((current) => Math.abs(candidate.left - current.left) < 21 && Math.abs(candidate.top - current.top) < 8);
+    }) ?? { left: 0, top: 0 };
+    const point = { left: Math.max(8, Math.min(92, item.x + position.left)), top: Math.max(7, Math.min(91, item.y + position.top)) };
+    placed.push(point);
+    return { ...item, displayPoint: point };
+  });
+}
+
 function valueOrNone(value?: string) { return value?.trim() || "なし"; }
 
 export default async function SubmissionDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -49,6 +67,7 @@ export default async function SubmissionDetail({ params }: { params: Promise<{ i
   const layout = payload.layouts?.[programIndex] ?? payload.layouts?.[0] ?? {};
   const players = Object.entries(layout.playerLabels ?? {}).filter(([, label]) => Boolean(label));
   const objects = layout.objects ?? [];
+  const displayedObjects = displayObjectPositions(objects);
   const submittedAt = row.submitted_at ? new Intl.DateTimeFormat("ja-JP", { dateStyle: "long", timeStyle: "short", timeZone: "Asia/Tokyo" }).format(new Date(row.submitted_at)) : "未提出";
 
   return <main className="admin-shell">
@@ -59,10 +78,10 @@ export default async function SubmissionDetail({ params }: { params: Promise<{ i
       <section className="setup-sheet">
         <header className="setup-sheet-header"><div><p>令和8年度　音楽のつどい</p><h1>舞台設営・備品配置資料</h1></div><aside><b>{row.status === "submitted" ? "提出済み" : "下書き"}</b><small>{submittedAt}</small></aside></header>
         <div className="setup-sheet-meta"><div><span>学校名</span><b>{row.school_name}</b></div><div><span>出演人数</span><b>{row.performer_total}名</b></div><div><span>配置</span><b>{row.program_name === "配置図共通" ? "共通配置" : row.program_name}</b></div></div>
-        <section className="setup-stage-section"><div className="setup-section-head"><h2>舞台配置図</h2><span>客席側から見た配置　幅 15m × 奥行 12m</span></div><div className="setup-stage-map">
+        <section className="setup-stage-section"><div className="setup-section-head"><h2>舞台配置図</h2><span>客席側から見た配置　幅 15m × 奥行 12m</span></div><div className="setup-collision-note">近接した備品は、名称が読めるよう表示位置のみ少しずらしています。</div><div className="setup-stage-map">
           <div className="setup-piano">PIANO</div><div className="setup-riser setup-riser-top">ひな壇 2段目（椅子14）<small>横12.6m × 縦1.2m</small></div><div className="setup-riser setup-riser-low">ひな壇 1段目（椅子16）<small>横10.8m × 縦0.9m</small></div>
           {players.map(([index, label]) => { const playerIndex = Number(index); const point = layout.playerPositions?.[playerIndex] ?? fallbackPosition(playerIndex, Boolean(layout.fanLayout)); const seat = layout.playerSeats?.[playerIndex] ?? "player"; return <span key={index} className={`setup-player ${seat}`} style={{ left: `${point.left}%`, top: `${point.top}%` }}>{label}</span>; })}
-          {objects.map((item) => <span key={item.id} className={`setup-object ${item.kind}`} style={{ left: `${item.x}%`, top: `${item.y}%` }}><i aria-hidden="true">{item.icon}</i><b>{item.label}</b>{item.power && <em>⚡</em>}</span>)}
+          {displayedObjects.map((item) => <span key={item.id} className={`setup-object ${item.kind}`} style={{ left: `${item.displayPoint.left}%`, top: `${item.displayPoint.top}%` }}><i aria-hidden="true">{item.icon}</i><b>{item.label}</b>{item.power && <em>⚡</em>}</span>)}
           <div className="setup-audience">客　席</div>
         </div><div className="setup-stage-measurements">後方ひな壇：横12.6m × 縦1.2m　／　前方ひな壇：横10.8m × 縦0.9m　／　ひな壇前方から舞台袖まで：5.0m + 1.2m</div><div className="setup-legend"><span><i className="solid" />出演者椅子</span><span><i className="dashed" />折り畳み椅子</span><span>⚡ 電源を使用する備品</span></div>
         </section>
