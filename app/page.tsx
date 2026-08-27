@@ -341,6 +341,12 @@ export default function Home() {
     const radius = 29 - row * 7;
     return { left: Number((50 + Math.cos((angle * Math.PI) / 180) * radius * 1.28).toFixed(3)), top: Number((82 + Math.sin((angle * Math.PI) / 180) * radius).toFixed(3)) };
   };
+  const navigateToStep = (step: number) => {
+    const targets: Record<number, string> = { 1: "organization", 2: "stage", 3: "stage-equipment", 4: "common-application", 5: "precheck" };
+    setCurrentStep(step);
+    setStepMessage("");
+    requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(targets[step])?.scrollIntoView({ behavior: "smooth", block: "start" })));
+  };
 
   return <main className="app-shell">
     <aside className="side-nav" aria-label="主なメニュー">
@@ -355,7 +361,7 @@ export default function Home() {
       <div className="content-wrap form-content">
         <section className="page-heading"><div><p className="section-kicker">STAGE LAYOUT / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第61回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {editingSubmissionId ? `申請 #${editingSubmissionId} を編集中` : saved ? "登録内容を保存しました" : "どなたでも入力・提出できます"}</div></section>
 
-        <nav className="entry-steps" aria-label="入力ステップ">{[[1, "基本情報"], [2, "配置図"], [3, "舞台備品"], [4, "共通申請"], [5, "確認・提出"]].map(([step, label]) => <button key={step} className={currentStep === step ? "is-active" : currentStep > step ? "is-complete" : ""} onClick={() => { setCurrentStep(Number(step)); setStepMessage(""); }}><i>{currentStep > step ? "✓" : step}</i><span>{label}</span></button>)}</nav>
+        <nav className="entry-steps" aria-label="入力ステップ">{[[1, "基本情報"], [2, "配置図"], [3, "舞台備品"], [4, "共通申請"], [5, "確認・提出"]].map(([step, label]) => <button key={step} className={currentStep === step ? "is-active" : currentStep > step ? "is-complete" : ""} onClick={() => navigateToStep(Number(step))}><i>{currentStep > step ? "✓" : step}</i><span>{label}</span></button>)}</nav>
         <FlowGuide step={currentStep} separatePrograms={separatePrograms} />
 
         {currentStep === 1 && <><section className="request-summary" id="organization">
@@ -393,13 +399,13 @@ export default function Home() {
           </section>
         </div>{currentStep === 2 && <div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(1)}>← 基本情報へ戻る</button><button onClick={goToNextStep}>舞台備品へ進む →</button></div>}</>}
 
-        {currentStep === 3 && <><section className="equipment-workspace">
+        {currentStep === 3 && <><section className="equipment-workspace" id="stage-equipment">
           <div className="equipment-heading"><div><p className="mini-label">STAGE EQUIPMENT</p><h2>舞台備品を配置</h2><p>必要な備品を押すと、上の配置図へ追加されます。追加された備品は赤枠で選択され、ドラッグで移動できます。</p></div></div>
           <label className="switch-line power-entry"><input type="checkbox" checked={usePower} onChange={(e) => { setUsePower(e.target.checked); setSaved(false); }} /><span />電源（コンセント）を使用する <small>配置した備品を選び、「電源を使用」をチェックしてください</small></label>
           <div className="object-palette"><div className="palette-label">舞台備品</div>{palette.map((item) => <button key={item.label} onClick={() => addObject(item.label, item.icon, item.kind)}><span className="tool-icon">{item.icon}</span><span>{item.label}</span><small>舞台へ追加</small></button>)}<label className="custom-equipment"><span>その他の備品・楽器</span><input value={customEquipmentName} onChange={(event) => setCustomEquipmentName(event.target.value)} placeholder="例：木琴、和太鼓" /><button type="button" disabled={!customEquipmentName.trim()} onClick={() => addObject(customEquipmentName.trim(), "◆", "instrument")}>配置図に追加</button><small>必要な数だけ、同じ名称でも何度でも追加できます</small></label></div>
         </section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(2)}>← 配置図へ戻る</button><button onClick={goToNextStep}>共通申請へ進む →</button></div></>}
 
-        {currentStep === 4 && <><section className="application-card">
+        {currentStep === 4 && <><section className="application-card" id="common-application">
           <div className="application-head"><div><p className="mini-label">APPLICATION FORM / 1)-3)</p><h2>舞台使用機器・搬出入等申請</h2><p>申請書の入力項目を、舞台配置と同じ画面で管理します。</p></div><span>提出期限　<strong>10月16日（金）</strong></span></div>
           <div className="application-grid">
             <section className="application-section"><div className="application-number">1</div><div className="application-body"><h3>車での搬入出</h3><div className="field-row"><Field label="搬入出" type="select" value={carDelivery === "有" ? "あり" : "なし"} options={["あり", "なし"]} onChange={(value) => { setCarDelivery(value === "あり" ? "有" : "無"); setSaved(false); }} />{carDelivery === "有" && <Field label="搬入希望日" type="select" value={deliveryDate} options={["前日（11/13 18時〜19時）", "当日（11/14 10時〜）"]} onChange={(value) => { setDeliveryDate(value); setSaved(false); }} />}</div>{carDelivery === "有" && <><Field label="搬入物" type="text" value={loading.join("、")} placeholder="主な搬入物" onChange={(value) => { setLoading(value.split(/[、,]/).map((item) => item.trim()).filter(Boolean)); setSaved(false); }} /><div className="field-row"><Field label="車両責任者氏名" type="text" placeholder="氏名" onChange={() => setSaved(false)} /><Field label="連絡先" type="text" placeholder="電話番号" onChange={() => setSaved(false)} /></div><div className="field-row"><Field label="車種（車高3m未満）" type="text" placeholder="車種" onChange={() => setSaved(false)} /><Field label="台数" type="number" suffix="台" onChange={() => setSaved(false)} /></div></>}</div></section>
