@@ -9,28 +9,35 @@ type SubmissionPayload = { layouts?: Record<string, ProgramLayout>; programs?: s
 type Submission = { id: number; school_name: string; program_name: string; performer_total: number; status: "draft" | "submitted"; updated_at: string; submitted_at: string | null; payload: string };
 type PdfPage = { submission: Submission; payload: SubmissionPayload; programIndex: number; programName: string; performerTotal: number; layout: ProgramLayout };
 
-const playerSlots = Array.from({ length: 100 }, (_, index) => index);
+const MAX_PERFORMERS = 150;
+const playerSlots = Array.from({ length: MAX_PERFORMERS }, (_, index) => index);
 const toshimaElementarySchools = ["仰高小学校", "駒込小学校", "巣鴨小学校", "清和小学校", "西巣鴨小学校", "豊成小学校", "朋有小学校", "朝日小学校", "池袋第一小学校", "池袋小学校", "南池袋小学校", "高南小学校", "目白小学校", "長崎小学校", "要小学校", "椎名町小学校", "富士見台小学校", "千早小学校", "高松小学校", "さくら小学校", "池袋本町小学校"];
 
-function fallbackPosition(index: number, fanLayout: boolean, autoPlacement: "riser" | "floor" = "riser"): StagePoint {
+function fallbackPosition(index: number, fanLayout: boolean, autoPlacement: "riser" | "floor" = "riser", performerCount = MAX_PERFORMERS): StagePoint {
+  const performersPerRow = 15;
   if (autoPlacement === "floor") {
-    const row = Math.floor(index / 16);
-    const inRow = index % 16;
-    const rowSize = Math.min(16, 100 - row * 16);
-    if (!fanLayout) return { left: Number((13 + inRow * (74 / Math.max(1, rowSize - 1))).toFixed(3)), top: Number((48 + row * 6.3).toFixed(3)) };
+    const row = Math.floor(index / performersPerRow);
+    const inRow = index % performersPerRow;
+    const rowCount = Math.max(1, Math.ceil(performerCount / performersPerRow));
+    const rowSize = Math.min(performersPerRow, Math.max(1, performerCount - row * performersPerRow));
+    const top = 48 + row * (36 / Math.max(1, rowCount - 1));
+    if (!fanLayout) return { left: Number((13 + inRow * (74 / Math.max(1, rowSize - 1))).toFixed(3)), top: Number(top.toFixed(3)) };
     const angle = 202 + inRow * (136 / Math.max(1, rowSize - 1));
-    const radius = 29 - row * 4.5;
+    const radius = 29 - row * (16 / Math.max(1, rowCount - 1));
     return { left: Number((50 + Math.cos((angle * Math.PI) / 180) * radius * 1.28).toFixed(3)), top: Number((82 + Math.sin((angle * Math.PI) / 180) * radius).toFixed(3)) };
   }
   if (index < 14) return { left: Number((22 + index * (56 / 13)).toFixed(3)), top: 13 };
   if (index < 30) return { left: Number((27 + (index - 14) * (47 / 15)).toFixed(3)), top: 29 };
   const outsideIndex = index - 30;
-  const row = Math.floor(outsideIndex / 16);
-  const inRow = outsideIndex % 16;
-  const rowSize = Math.min(16, 70 - row * 16);
-  if (!fanLayout) return { left: Number((23 + inRow * (54 / Math.max(1, rowSize - 1))).toFixed(3)), top: 52 + row * 18 };
+  const outsideCount = Math.max(1, performerCount - 30);
+  const row = Math.floor(outsideIndex / performersPerRow);
+  const inRow = outsideIndex % performersPerRow;
+  const rowCount = Math.max(1, Math.ceil(outsideCount / performersPerRow));
+  const rowSize = Math.min(performersPerRow, Math.max(1, outsideCount - row * performersPerRow));
+  const top = 52 + row * (36 / Math.max(1, rowCount - 1));
+  if (!fanLayout) return { left: Number((23 + inRow * (54 / Math.max(1, rowSize - 1))).toFixed(3)), top: Number(top.toFixed(3)) };
   const angle = 202 + inRow * (136 / Math.max(1, rowSize - 1));
-  const radius = 29 - row * 7;
+  const radius = 29 - row * (16 / Math.max(1, rowCount - 1));
   return { left: Number((50 + Math.cos((angle * Math.PI) / 180) * radius * 1.28).toFixed(3)), top: Number((82 + Math.sin((angle * Math.PI) / 180) * radius).toFixed(3)) };
 }
 
@@ -64,7 +71,7 @@ function SubmissionPdfPage({ page }: { page: PdfPage }) {
     <header><p>令和8年度　音楽のつどい</p><h1>舞台設営・備品配置資料</h1><small>提出資料</small></header>
     <div className="pdf-meta"><div><span>学校名</span><b>{submission.school_name}</b></div><div><span>出演人数</span><b>{performerTotal}名</b></div><div><span>配置</span><b>{programName === "配置図共通" ? "共通配置" : programName || "未入力"}</b></div></div>
     <section className="pdf-section"><h2>舞台配置図（幅 15m × 奥行 12m）</h2><div className="pdf-stage"><div className="pdf-piano">PIANO</div><div className="pdf-riser pdf-riser-top">ひな壇 2段目　椅子14</div><div className="pdf-riser pdf-riser-low">ひな壇 1段目　椅子16</div>
-      {players.map((index) => { const point = layout.playerPositions?.[index] ?? fallbackPosition(index, Boolean(layout.fanLayout), layout.autoPlacement); const seat = layout.playerSeats?.[index] ?? "player"; return <span key={index} className={`pdf-player ${seat}`} style={{ left: `${point.left}%`, top: `${point.top}%` }}>{playerLabels[index]}</span>; })}
+      {players.map((index) => { const point = layout.playerPositions?.[index] ?? fallbackPosition(index, Boolean(layout.fanLayout), layout.autoPlacement, players.length); const seat = layout.playerSeats?.[index] ?? "player"; return <span key={index} className={`pdf-player ${seat}`} style={{ left: `${point.left}%`, top: `${point.top}%` }}>{playerLabels[index]}</span>; })}
       {objects.map((item) => <span key={item.id} className={`pdf-object ${item.kind}`} style={{ left: `${item.x}%`, top: `${item.y}%` }}>{item.icon} {item.label}{item.power ? " ⚡" : ""}</span>)}<div className="pdf-audience">客　席</div></div><div className="pdf-stage-measurements">後方ひな壇：横12.6m × 縦1.2m　／　前方ひな壇：横10.8m × 縦0.9m　／　ひな壇前方から舞台袖まで：5.0m + 1.2m</div></section>
     <div className="pdf-info-grid"><section><h2>利用備品・数量</h2><dl><div><dt>ピアノ</dt><dd>{payload.usePiano ? "使用" : "不使用"}</dd></div><div><dt>子ども用ピアノ台</dt><dd>{payload.useChildPianoBench ? payload.bringChildPianoBench ? "使用・持ち込み" : "使用" : "不使用"}</dd></div><div><dt>マイク</dt><dd>{payload.counts?.microphones ?? 0}本</dd></div><div><dt>マイクスタンド</dt><dd>{payload.counts?.micStands ?? 0}本</dd></div><div><dt>出演者椅子</dt><dd>{payload.counts?.playerChairs ?? 0}脚</dd></div><div><dt>折り畳み椅子</dt><dd>{payload.counts?.foldingChairs ?? 0}脚</dd></div></dl></section><section><h2>搬入・設営</h2><dl><div><dt>車での搬入</dt><dd>{valueOrNone(payload.carDelivery)}</dd></div><div><dt>搬入希望日</dt><dd>{valueOrNone(payload.deliveryDate)}</dd></div><div><dt>搬入物</dt><dd>{payload.loading?.join("、") || "なし"}</dd></div><div><dt>電源（コンセント）</dt><dd>{payload.usePower ? "使用" : "不使用"}</dd></div><div><dt>音響・映像備品</dt><dd>{valueOrNone(payload.soundVideo)}</dd></div></dl></section></div>
     <section className="pdf-notes"><h2>その他担当者への要望</h2><p>{valueOrNone(payload.notes)}</p></section><footer>教育委員会提出用／当日設営用資料</footer>

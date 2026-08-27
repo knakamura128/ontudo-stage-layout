@@ -23,8 +23,9 @@ declare global {
 
 const GOOGLE_CLIENT_ID = "395301319192-sr44o695g8se9vkklp2485rb15jqpum2.apps.googleusercontent.com";
 const FIXED_STAGE_SIZE = { width: 15, depth: 12 };
+const MAX_PERFORMERS = 150;
 
-const playerSlots = Array.from({ length: 100 }, (_, index) => ({ index }));
+const playerSlots = Array.from({ length: MAX_PERFORMERS }, (_, index) => ({ index }));
 const blankPlayerLabels = () => Object.fromEntries(playerSlots.map(({ index }) => [index, ""]));
 
 const palette = [
@@ -215,7 +216,7 @@ export default function Home() {
   const placedPlayerCount = players.filter((_, index) => Boolean(activeLayout.playerLabels[index])).length;
   const currentPerformerTotal = separatePrograms ? programPerformers[activeProgram] : performerTotal;
   const changePerformerTotal = (value: number) => {
-    const nextValue = Math.min(100, Math.max(0, value));
+    const nextValue = Math.min(MAX_PERFORMERS, Math.max(0, value));
     if (separatePrograms) setProgramPerformers((now) => now.map((count, index) => index === activeProgram ? nextValue : count));
     else setPerformerTotal(nextValue);
     syncPerformerCount(nextValue);
@@ -223,7 +224,7 @@ export default function Home() {
   };
 
   const syncPerformerCount = (value: number, targetLayoutKey = layoutKey) => {
-    const targetCount = Math.min(100, Math.max(0, value));
+    const targetCount = Math.min(MAX_PERFORMERS, Math.max(0, value));
     const playerChairCount = Math.min(60, counts.playerChairs, targetCount);
     const foldingChairCount = Math.min(50, counts.foldingChairs, Math.max(0, targetCount - playerChairCount));
     updateLayoutAt(targetLayoutKey, (now) => {
@@ -322,13 +323,17 @@ export default function Home() {
     if (draggingPlayerIndex !== null) updateLayout((now) => ({ ...now, playerPositions: { ...now.playerPositions, [draggingPlayerIndex]: { left: x, top: y } } }));
   };
   const playerPosition = (position: number) => {
+    const performersPerRow = 15;
+    const performerCount = Math.max(1, placedPlayerCount);
     if (autoPlacement === "floor") {
-      const row = Math.floor(position / 16);
-      const inRow = position % 16;
-      const rowSize = Math.min(16, players.length - row * 16);
-      if (!fanLayout) return { left: Number((13 + inRow * (74 / Math.max(1, rowSize - 1))).toFixed(3)), top: Number((48 + row * 6.3).toFixed(3)) };
+      const row = Math.floor(position / performersPerRow);
+      const inRow = position % performersPerRow;
+      const rowCount = Math.max(1, Math.ceil(performerCount / performersPerRow));
+      const rowSize = Math.min(performersPerRow, Math.max(1, performerCount - row * performersPerRow));
+      const top = 48 + row * (36 / Math.max(1, rowCount - 1));
+      if (!fanLayout) return { left: Number((13 + inRow * (74 / Math.max(1, rowSize - 1))).toFixed(3)), top: Number(top.toFixed(3)) };
       const angle = 202 + inRow * (136 / Math.max(1, rowSize - 1));
-      const radius = 29 - row * 4.5;
+      const radius = 29 - row * (16 / Math.max(1, rowCount - 1));
       return { left: Number((50 + Math.cos((angle * Math.PI) / 180) * radius * 1.28).toFixed(3)), top: Number((82 + Math.sin((angle * Math.PI) / 180) * radius).toFixed(3)) };
     }
     const riserUpperCount = 14;
@@ -342,14 +347,16 @@ export default function Home() {
     }
 
     const outsideIndex = position - riserCount;
-    const outsideCount = players.length - riserCount;
-    const row = Math.floor(outsideIndex / 16);
-    const inRow = outsideIndex % 16;
-    const rowSize = Math.min(16, outsideCount - row * 16);
-    if (!fanLayout) return { left: Number((23 + inRow * (54 / Math.max(1, rowSize - 1))).toFixed(3)), top: 52 + row * 18 };
+    const outsideCount = Math.max(1, performerCount - riserCount);
+    const row = Math.floor(outsideIndex / performersPerRow);
+    const inRow = outsideIndex % performersPerRow;
+    const rowCount = Math.max(1, Math.ceil(outsideCount / performersPerRow));
+    const rowSize = Math.min(performersPerRow, Math.max(1, outsideCount - row * performersPerRow));
+    const top = 52 + row * (36 / Math.max(1, rowCount - 1));
+    if (!fanLayout) return { left: Number((23 + inRow * (54 / Math.max(1, rowSize - 1))).toFixed(3)), top: Number(top.toFixed(3)) };
 
     const angle = 202 + inRow * (136 / Math.max(1, rowSize - 1));
-    const radius = 29 - row * 7;
+    const radius = 29 - row * (16 / Math.max(1, rowCount - 1));
     return { left: Number((50 + Math.cos((angle * Math.PI) / 180) * radius * 1.28).toFixed(3)), top: Number((82 + Math.sin((angle * Math.PI) / 180) * radius).toFixed(3)) };
   };
   const navigateToStep = (step: number) => {
@@ -376,9 +383,9 @@ export default function Home() {
         <FlowGuide step={currentStep} separatePrograms={separatePrograms} onOpenDemo={() => { setOnboardingPage(1); setOnboardingOpen(true); }} />
 
         {currentStep === 1 && <><section className="request-summary" id="organization">
-          <label><span>学校名</span><input value={schoolName} onChange={(event) => { setSchoolName(event.target.value); setSaved(false); }} placeholder="学校名を入力" /></label>{!separatePrograms && <label><span>出演人数</span><div className="summary-number"><input type="number" value={performerTotal || ""} min="0" max="100" onChange={(event) => changePerformerTotal(Number(event.target.value))} placeholder="0" /><small>名</small></div></label>}<label className="separate-program-toggle"><input type="checkbox" checked={separatePrograms} onChange={(event) => { const enabled = event.target.checked; setSeparatePrograms(enabled); if (enabled) { const count = programPerformers[0] || performerTotal; setProgramPerformers((now) => [count, now[1], now[2]]); syncPerformerCount(count, 0); } else setActiveProgram(0); setSaved(false); }} /><span aria-hidden="true" /><span className="toggle-copy"><b>演目ごとに配置を変える</b><small>配置変更がある学校のみ選択してください</small></span></label>
+          <label><span>学校名</span><input value={schoolName} onChange={(event) => { setSchoolName(event.target.value); setSaved(false); }} placeholder="学校名を入力" /></label>{!separatePrograms && <label><span>出演人数</span><div className="summary-number"><input type="number" value={performerTotal || ""} min="0" max={MAX_PERFORMERS} onChange={(event) => changePerformerTotal(Number(event.target.value))} placeholder="0" /><small>名</small></div></label>}<label className="separate-program-toggle"><input type="checkbox" checked={separatePrograms} onChange={(event) => { const enabled = event.target.checked; setSeparatePrograms(enabled); if (enabled) { const count = programPerformers[0] || performerTotal; setProgramPerformers((now) => [count, now[1], now[2]]); syncPerformerCount(count, 0); } else setActiveProgram(0); setSaved(false); }} /><span aria-hidden="true" /><span className="toggle-copy"><b>演目ごとに配置を変える</b><small>配置変更がある学校のみ選択してください</small></span></label>
         </section>
-        {separatePrograms && <section className="program-layout-card"><div><p className="mini-label">PROGRAM-SPECIFIC LAYOUTS</p><h2>演目ごとの舞台配置</h2><p>配置を変える演目だけ、演目名と出演人数を入力してください。提出資料は演目ごとに1ページずつ出力されます。</p></div><div className="program-inputs">{[0, 1, 2].map((index) => <label key={index}><span>演目 {index + 1}</span><input value={programs[index]} onChange={(event) => { const value = event.target.value; setPrograms((now) => now.map((program, current) => current === index ? value : program)); setSaved(false); }} placeholder="例：合奏『風のシンフォニー』" /><span>出演人数</span><div className="summary-number"><input type="number" min="0" max="100" value={programPerformers[index] || ""} onChange={(event) => { const value = Math.max(0, Math.min(100, Number(event.target.value))); setProgramPerformers((now) => now.map((count, current) => current === index ? value : count)); syncPerformerCount(value, index); setSaved(false); }} /><small>名</small></div></label>)}</div><div className="program-tabs" aria-label="設定する演目">{[0, 1, 2].map((index) => <button key={index} className={activeProgram === index ? "is-active" : ""} onClick={() => { setActiveProgram(index); setSelectedId(null); setSelectedPlayerIndex(null); }} disabled={!programs[index].trim()}>{programs[index].trim() || `演目 ${index + 1}（未入力）`}</button>)}</div></section>}
+        {separatePrograms && <section className="program-layout-card"><div><p className="mini-label">PROGRAM-SPECIFIC LAYOUTS</p><h2>演目ごとの舞台配置</h2><p>配置を変える演目だけ、演目名と出演人数を入力してください。提出資料は演目ごとに1ページずつ出力されます。</p></div><div className="program-inputs">{[0, 1, 2].map((index) => <label key={index}><span>演目 {index + 1}</span><input value={programs[index]} onChange={(event) => { const value = event.target.value; setPrograms((now) => now.map((program, current) => current === index ? value : program)); setSaved(false); }} placeholder="例：合奏『風のシンフォニー』" /><span>出演人数</span><div className="summary-number"><input type="number" min="0" max={MAX_PERFORMERS} value={programPerformers[index] || ""} onChange={(event) => { const value = Math.max(0, Math.min(MAX_PERFORMERS, Number(event.target.value))); setProgramPerformers((now) => now.map((count, current) => current === index ? value : count)); syncPerformerCount(value, index); setSaved(false); }} /><small>名</small></div></label>)}</div><div className="program-tabs" aria-label="設定する演目">{[0, 1, 2].map((index) => <button key={index} className={activeProgram === index ? "is-active" : ""} onClick={() => { setActiveProgram(index); setSelectedId(null); setSelectedPlayerIndex(null); }} disabled={!programs[index].trim()}>{programs[index].trim() || `演目 ${index + 1}（未入力）`}</button>)}</div></section>}
         {stepMessage && <p className="step-message" role="alert">{stepMessage}</p>}<div className="step-actions"><button onClick={goToNextStep}>配置図へ進む →</button></div></>}
 
         {(currentStep === 2 || currentStep === 3) && <><section className="notice-card"><b>配置の手順</b><p>{separatePrograms ? "演目タブを切り替えて、演目ごとの出演者・備品配置を設定します。共通の搬入・音響申請は、このあと最後に入力します。" : "出演人数を入力すると、出演者が自動で配置されます。必要な椅子と舞台備品の数を指定し、配置図上でドラッグして位置を調整してください。"}</p></section><div className="layout-grid detailed-grid">
@@ -406,7 +413,7 @@ export default function Home() {
           <section className="control-panel comprehensive-panel">
             <div className="panel-head"><div><p className="mini-label">EQUIPMENT & DELIVERY</p><h2>申請内容</h2></div><span className="form-no">様式 1104</span></div>
             <section className="form-section"><h3>利用備品</h3><label className="switch-line"><input type="checkbox" checked={usePiano} onChange={(e) => { setUsePiano(e.target.checked); setSaved(false); }} /><span />ピアノを使用する <small>（位置固定）</small></label><label className="switch-line"><input type="checkbox" checked={useChildPianoBench} onChange={(e) => { setUseChildPianoBench(e.target.checked); if (!e.target.checked) setBringChildPianoBench(false); setSaved(false); }} /><span />子ども用ピアノ台を使用する</label><label className="switch-line"><input type="checkbox" checked={bringChildPianoBench} disabled={!useChildPianoBench} onChange={(e) => { setBringChildPianoBench(e.target.checked); setSaved(false); }} /><span />子ども用ピアノ台を持ち込む</label><label className="switch-line"><input type="checkbox" checked={objects.some((item) => item.label === "指揮台")} onChange={(e) => toggleStageObject("指揮台", "▣", "stand", e.target.checked)} /><span />指揮台を使用する <small>（配置図上で移動可）</small></label><label className="switch-line"><input type="checkbox" checked={objects.some((item) => item.label === "指揮者譜面台")} onChange={(e) => toggleStageObject("指揮者譜面台", "🎼", "stand", e.target.checked)} /><span />指揮者譜面台を使用する <small>（配置図上で移動可）</small></label></section>
-            <section className="form-section count-section"><h3>出演者・舞台備品の数量</h3><div className="quantity-tree"><div className="quantity-total"><span>出演人数</span><strong>{currentPerformerTotal}名</strong><small>配置図と連動</small></div><div className="quantity-tree-rows"><Count label="出演者" suffix="名（最大100）" value={currentPerformerTotal} max={100} onChange={changePerformerTotal} /><Count label="出演者椅子" suffix={`脚（最大60・出演者 ${placedPlayerCount}名まで）`} value={counts.playerChairs} max={Math.min(60, placedPlayerCount)} onChange={(v) => setSeatCounts(v, counts.foldingChairs)} /><Count label="折りたたみ椅子" suffix={`脚（最大50・残り ${Math.max(0, placedPlayerCount - counts.playerChairs)}名まで）`} value={counts.foldingChairs} max={Math.min(50, Math.max(0, placedPlayerCount - counts.playerChairs))} onChange={(v) => setSeatCounts(counts.playerChairs, v)} /></div></div><p className="move-help">出演者を増減すると、配置図の出演者も自動で増減します。椅子の数は出演者に反映され、マイク類の数は配置図に追加されます。</p><Count label="マイク" suffix="本（最大4・配置図に追加）" value={counts.microphones} max={4} onChange={(v) => syncCountedObjects("マイク", "🎤", "instrument", v)} /><Count label="マイクスタンド" suffix="本（最大15・配置図に追加）" value={counts.micStands} max={15} onChange={(v) => syncCountedObjects("マイクスタンド", "🎙️", "stand", v)} /></section>
+            <section className="form-section count-section"><h3>出演者・舞台備品の数量</h3><div className="quantity-tree"><div className="quantity-total"><span>出演人数</span><strong>{currentPerformerTotal}名</strong><small>配置図と連動</small></div><div className="quantity-tree-rows"><Count label="出演者" suffix={`名（最大${MAX_PERFORMERS}）`} value={currentPerformerTotal} max={MAX_PERFORMERS} onChange={changePerformerTotal} /><Count label="出演者椅子" suffix={`脚（最大60・出演者 ${placedPlayerCount}名まで）`} value={counts.playerChairs} max={Math.min(60, placedPlayerCount)} onChange={(v) => setSeatCounts(v, counts.foldingChairs)} /><Count label="折りたたみ椅子" suffix={`脚（最大50・残り ${Math.max(0, placedPlayerCount - counts.playerChairs)}名まで）`} value={counts.foldingChairs} max={Math.min(50, Math.max(0, placedPlayerCount - counts.playerChairs))} onChange={(v) => setSeatCounts(counts.playerChairs, v)} /></div></div><p className="move-help">出演者を増減すると、配置図の出演者も自動で増減します。椅子の数は出演者に反映され、マイク類の数は配置図に追加されます。</p><Count label="マイク" suffix="本（最大4・配置図に追加）" value={counts.microphones} max={4} onChange={(v) => syncCountedObjects("マイク", "🎤", "instrument", v)} /><Count label="マイクスタンド" suffix="本（最大15・配置図に追加）" value={counts.micStands} max={15} onChange={(v) => syncCountedObjects("マイクスタンド", "🎙️", "stand", v)} /></section>
           </section>
         </div>{currentStep === 2 && <div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(1)}>← 基本情報へ戻る</button><button onClick={goToNextStep}>舞台備品へ進む →</button></div>}</>}
 
