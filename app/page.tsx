@@ -84,6 +84,8 @@ export default function Home() {
   const [editingSubmissionId, setEditingSubmissionId] = useState<number | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [stepMessage, setStepMessage] = useState("");
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingPage, setOnboardingPage] = useState(0);
 
   const completeGoogleSignIn = async (credential: string) => {
     setAuthError("");
@@ -108,6 +110,15 @@ export default function Home() {
       .catch(() => setAuthUser(null))
       .finally(() => setAuthLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!window.localStorage.getItem("music-stage-onboarding-seen")) setOnboardingOpen(true);
+  }, []);
+
+  const closeOnboarding = () => {
+    window.localStorage.setItem("music-stage-onboarding-seen", "1");
+    setOnboardingOpen(false);
+  };
 
   useEffect(() => {
     if (authLoading || authUser || !googleButtonRef.current) return;
@@ -362,7 +373,7 @@ export default function Home() {
         <section className="page-heading"><div><p className="section-kicker">STAGE LAYOUT / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第61回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {editingSubmissionId ? `申請 #${editingSubmissionId} を編集中` : saved ? "登録内容を保存しました" : "どなたでも入力・提出できます"}</div></section>
 
         <nav className="entry-steps" aria-label="入力ステップ">{[[1, "基本情報"], [2, "配置図"], [3, "舞台備品"], [4, "共通申請"], [5, "確認・提出"]].map(([step, label]) => <button key={step} className={currentStep === step ? "is-active" : currentStep > step ? "is-complete" : ""} onClick={() => navigateToStep(Number(step))}><i>{currentStep > step ? "✓" : step}</i><span>{label}</span></button>)}</nav>
-        <FlowGuide step={currentStep} separatePrograms={separatePrograms} />
+        <FlowGuide step={currentStep} separatePrograms={separatePrograms} onOpenDemo={() => { setOnboardingPage(1); setOnboardingOpen(true); }} />
 
         {currentStep === 1 && <><section className="request-summary" id="organization">
           <label><span>学校名</span><input value={schoolName} onChange={(event) => { setSchoolName(event.target.value); setSaved(false); }} placeholder="学校名を入力" /></label>{!separatePrograms && <label><span>出演人数</span><div className="summary-number"><input type="number" value={performerTotal || ""} min="0" max="100" onChange={(event) => changePerformerTotal(Number(event.target.value))} placeholder="0" /><small>名</small></div></label>}<label className="separate-program-toggle"><input type="checkbox" checked={separatePrograms} onChange={(event) => { const enabled = event.target.checked; setSeparatePrograms(enabled); if (enabled) { const count = programPerformers[0] || performerTotal; setProgramPerformers((now) => [count, now[1], now[2]]); syncPerformerCount(count, 0); } else setActiveProgram(0); setSaved(false); }} /><span aria-hidden="true" /><span className="toggle-copy"><b>演目ごとに配置を変える</b><small>配置変更がある学校のみ選択してください</small></span></label>
@@ -419,6 +430,7 @@ export default function Home() {
         <section className="submission-pdf" aria-hidden="true"><header><p>令和8年度　音楽のつどい</p><h1>舞台配置・使用機器等 提出資料</h1><small>作成日　{new Intl.DateTimeFormat("ja-JP", { dateStyle: "long", timeZone: "Asia/Tokyo" }).format(new Date())}</small></header><div className="pdf-meta"><div><span>学校名</span><b>{schoolName || "未入力"}</b></div><div><span>出演人数</span><b>{(separatePrograms ? programPerformers[activeProgram] : performerTotal) || placedPlayerCount}名</b></div><div><span>配置</span><b>{separatePrograms ? programs[activeProgram] || "未入力" : "共通配置"}</b></div></div><section className="pdf-section"><h2>舞台配置図（幅 {FIXED_STAGE_SIZE.width}m × 奥行 {FIXED_STAGE_SIZE.depth}m）</h2><div className="pdf-stage"><div className="pdf-piano">PIANO</div><div className="pdf-riser pdf-riser-top">ひな壇 2段目　椅子14</div><div className="pdf-riser pdf-riser-low">ひな壇 1段目　椅子16</div>{players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "player"; return label ? <span key={player.index} className={`pdf-player ${seat}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }}>{label}</span> : null; })}{objects.map((item) => <span key={item.id} className={`pdf-object ${item.kind}`} style={{ left: `${item.x}%`, top: `${item.y}%` }}>{item.icon} {item.label}{item.power ? " ⚡" : ""}</span>)}<div className="pdf-audience">客　席</div></div><div className="pdf-stage-measurements">後方ひな壇：横12.6m × 縦1.2m　／　前方ひな壇：横10.8m × 縦0.9m　／　ひな壇前方から舞台袖まで：5.0m + 1.2m</div></section><div className="pdf-info-grid"><section><h2>利用備品・数量</h2><dl><div><dt>ピアノ</dt><dd>{usePiano ? "使用" : "不使用"}</dd></div><div><dt>マイク</dt><dd>{counts.microphones}本</dd></div><div><dt>マイクスタンド</dt><dd>{counts.micStands}本</dd></div><div><dt>出演者椅子</dt><dd>{counts.playerChairs}脚</dd></div><div><dt>折り畳み椅子</dt><dd>{counts.foldingChairs}脚</dd></div><div><dt>電源（コンセント）</dt><dd>{usePower ? "使用" : "不使用"}</dd></div></dl></section><section><h2>搬入・音響</h2><dl><div><dt>車での搬入</dt><dd>{carDelivery}</dd></div><div><dt>搬入希望日</dt><dd>{deliveryDate}</dd></div><div><dt>搬入物</dt><dd>{loading.join("、") || "なし"}</dd></div><div><dt>音響・映像備品</dt><dd>{soundVideo}</dd></div><div><dt>音出し指示</dt><dd>{soundCue}</dd></div></dl></section></div><section className="pdf-notes"><h2>その他担当者への要望</h2><p>{notes || "なし"}</p></section><footer>教育委員会提出用／当日設営用資料</footer></section>
       </div>
     </section>
+    {onboardingOpen && <OnboardingGuide page={onboardingPage} onNext={() => onboardingPage < 2 ? setOnboardingPage((now) => now + 1) : closeOnboarding()} onSkip={closeOnboarding} />}
     {submitModal && <div className="submit-modal-backdrop" role="presentation"><section className="submit-modal" role="dialog" aria-modal="true" aria-labelledby="submit-modal-title"><div className={`submit-modal-icon ${submitModal}`}>{submitModal === "success" ? "✓" : "…"}</div><p className="mini-label">{submitModal === "success" ? "SUBMISSION COMPLETE" : "SUBMITTING"}</p><h2 id="submit-modal-title">{submitModal === "success" ? "舞台配置を提出しました" : "提出内容を送信しています"}</h2><p>{submitModal === "success" ? <>{schoolName || "学校"}の提出内容を受け付けました。管理者ページで設営資料として確認・PDF作成できます。学校担当者の操作はこれで完了です。</> : "画面を閉じずに、そのままお待ちください。"}</p>{submitModal === "success" && <button onClick={() => setSubmitModal(null)} autoFocus>確認しました</button>}</section></div>}
   </main>;
 }
@@ -427,7 +439,7 @@ function Count({ label, suffix, value, max, onChange }: { label: string; suffix:
   return <label className="count-input"><span>{label}</span><button onClick={() => onChange(value - 1)} type="button">−</button><input type="number" value={value} min="0" max={max} onChange={(e) => onChange(Number(e.target.value))} /><button onClick={() => onChange(value + 1)} type="button">＋</button><small>{suffix}</small></label>;
 }
 
-function FlowGuide({ step, separatePrograms }: { step: number; separatePrograms: boolean }) {
+function FlowGuide({ step, separatePrograms, onOpenDemo }: { step: number; separatePrograms: boolean; onOpenDemo: () => void }) {
   const guide = {
     1: { title: "まずは学校名と出演人数を入力", chips: ["学校名", "出演人数", "配置を変えるか選択"], tip: separatePrograms ? "演目ごとに配置を変える場合は、続けて各演目名と人数を入力します。" : "配置が同じなら、演目ごとの設定は選ばなくて大丈夫です。" },
     2: { title: separatePrograms ? "演目ごとに配置図をつくる" : "出演者を自動で配置する", chips: separatePrograms ? ["演目タブを選ぶ", "出演者を並べる", "ドラッグで調整"] : ["配置先を選ぶ", "出演者を確認", "ドラッグで調整"], tip: separatePrograms ? "演目タブごとに配置は保存されます。設定し終えたら「舞台備品へ進む」を押してください。" : "ひな壇または前方舞台を選び、必要なら扇状配置も使えます。" },
@@ -435,8 +447,19 @@ function FlowGuide({ step, separatePrograms }: { step: number; separatePrograms:
     4: { title: "全演目共通の申請を入力", chips: ["車で搬入するか", "音響・映像", "担当者への要望"], tip: separatePrograms ? "この内容はすべての演目で共通です。演目別の配置を設定し終えてから入力します。" : "搬入や音響など、当日の設営に必要な共通情報を入力します。" },
     5: { title: "最後に確認して提出", chips: ["未入力を確認", "必要なら戻る", "提出する"], tip: "提出後は管理者が設営資料として確認します。学校担当者の作業はここで完了です。" },
   }[step] ?? { title: "入力を進める", chips: [], tip: "" };
-  return <section className="flow-guide" aria-live="polite"><div className="flow-guide-head"><span>{step}</span><div><p>この画面でやること</p><h2>{guide.title}</h2></div><b>MISSION</b></div><div className="flow-guide-chips">{guide.chips.map((chip, index) => <span key={chip}><i>{index + 1}</i>{chip}</span>)}</div><p className="flow-guide-tip"><b>ポイント</b>{guide.tip}</p></section>;
+  return <section className="flow-guide" aria-live="polite"><div className="flow-guide-head"><span>{step}</span><div><p>この画面でやること</p><h2>{guide.title}</h2></div><button type="button" onClick={onOpenDemo}>動くデモ</button></div><div className="flow-guide-chips">{guide.chips.map((chip, index) => <span key={chip}><i>{index + 1}</i>{chip}</span>)}</div><p className="flow-guide-tip"><b>ポイント</b>{guide.tip}</p></section>;
 }
+
+function OnboardingGuide({ page, onNext, onSkip }: { page: number; onNext: () => void; onSkip: () => void }) {
+  const slides = [
+    { kicker: "30秒でわかる", title: "入力は5つのステップだけ", text: "上の番号を順に押すだけで、学校情報・配置図・備品・共通申請・提出まで進めます。途中で戻って直しても大丈夫です。", points: ["学校名と出演人数を入力", "配置図と備品を設定", "最後に共通申請を入力"] },
+    { kicker: "配置図の操作", title: "長押しして、そのまま動かす", text: "出演者や備品を長押しして、指を離さず移動します。タップすると赤枠になり、備品は右上の × で削除できます。", points: ["出演者を長押し", "指を動かして配置", "赤枠・× で確認"] },
+    { kicker: "備品と提出", title: "数を決めて、最後に提出", text: "マイクなどは数量を増やすと配置図にも追加されます。搬入や音響は共通申請で入力し、最後に提出してください。", points: ["数量と配置は連動", "搬入・音響は共通入力", "提出後は作業完了"] },
+  ][page];
+  return <div className="onboarding-backdrop" role="presentation"><section className="onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="onboarding-title"><button className="onboarding-skip" type="button" onClick={onSkip}>スキップ</button><div className="onboarding-progress" aria-label={`${page + 1} / 3`}>{[0, 1, 2].map((index) => <i key={index} className={index === page ? "is-active" : index < page ? "is-done" : ""} />)}</div><p>{slides.kicker}</p><h2 id="onboarding-title">{slides.title}</h2>{page === 1 ? <StageDragDemo /> : <div className={`onboarding-illustration page-${page}`} aria-hidden="true"><span>{page === 0 ? "①" : "✓"}</span><b>{page === 0 ? "順番に進めばOK" : "提出まであと少し"}</b></div>}<div className="onboarding-points">{slides.points.map((point, index) => <span key={point}><i>{index + 1}</i>{point}</span>)}</div><p className="onboarding-copy">{slides.text}</p><button className="onboarding-next" type="button" onClick={onNext}>{page === 2 ? "ガイドを閉じて入力を始める" : "次へ　→"}</button></section></div>;
+}
+
+function StageDragDemo() { return <div className="stage-drag-demo" aria-label="出演者をドラッグして移動する例"><span className="demo-riser top">ひな壇</span><span className="demo-riser low">ひな壇</span><span className="demo-player static one">出演者</span><span className="demo-player static two">出演者</span><span className="demo-player moving">出演者</span><span className="demo-hand">☝</span><span className="demo-target">ここへ移動</span><b>長押し → そのまま動かす</b></div>; }
 
 function Field({ label, type, value, options, placeholder, suffix, onChange }: { label: string; type: "text" | "number" | "select"; value?: string; options?: string[]; placeholder?: string; suffix?: string; onChange: (value: string) => void }) {
   return <label className="application-field"><span>{label}</span>{type === "select" ? <select value={value} onChange={(event) => onChange(event.target.value)}>{options?.map((option) => <option key={option}>{option}</option>)}</select> : <div><input type={type} placeholder={placeholder} min="0" onChange={(event) => onChange(event.target.value)} />{suffix && <small>{suffix}</small>}</div>}</label>;
