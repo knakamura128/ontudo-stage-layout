@@ -356,6 +356,7 @@ export default function Home() {
         <section className="page-heading"><div><p className="section-kicker">STAGE LAYOUT / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第61回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {editingSubmissionId ? `申請 #${editingSubmissionId} を編集中` : saved ? "登録内容を保存しました" : "どなたでも入力・提出できます"}</div></section>
 
         <nav className="entry-steps" aria-label="入力ステップ">{[[1, "基本情報"], [2, "配置図"], [3, "舞台備品"], [4, "共通申請"], [5, "確認・提出"]].map(([step, label]) => <button key={step} className={currentStep === step ? "is-active" : currentStep > step ? "is-complete" : ""} onClick={() => { setCurrentStep(Number(step)); setStepMessage(""); }}><i>{currentStep > step ? "✓" : step}</i><span>{label}</span></button>)}</nav>
+        <FlowGuide step={currentStep} separatePrograms={separatePrograms} />
 
         {currentStep === 1 && <><section className="request-summary" id="organization">
           <label><span>学校名</span><input value={schoolName} onChange={(event) => { setSchoolName(event.target.value); setSaved(false); }} placeholder="学校名を入力" /></label>{!separatePrograms && <label><span>出演人数</span><div className="summary-number"><input type="number" value={performerTotal || ""} min="0" max="100" onChange={(event) => changePerformerTotal(Number(event.target.value))} placeholder="0" /><small>名</small></div></label>}<label className="separate-program-toggle"><input type="checkbox" checked={separatePrograms} onChange={(event) => { const enabled = event.target.checked; setSeparatePrograms(enabled); if (enabled) { const count = programPerformers[0] || performerTotal; setProgramPerformers((now) => [count, now[1], now[2]]); syncPerformerCount(count, 0); } else setActiveProgram(0); setSaved(false); }} /><span aria-hidden="true" /><span className="toggle-copy"><b>演目ごとに配置を変える</b><small>配置変更がある学校のみ選択してください</small></span></label>
@@ -418,6 +419,17 @@ export default function Home() {
 
 function Count({ label, suffix, value, max, onChange }: { label: string; suffix: string; value: number; max?: number; onChange: (value: number) => void }) {
   return <label className="count-input"><span>{label}</span><button onClick={() => onChange(value - 1)} type="button">−</button><input type="number" value={value} min="0" max={max} onChange={(e) => onChange(Number(e.target.value))} /><button onClick={() => onChange(value + 1)} type="button">＋</button><small>{suffix}</small></label>;
+}
+
+function FlowGuide({ step, separatePrograms }: { step: number; separatePrograms: boolean }) {
+  const guide = {
+    1: { title: "まずは学校名と出演人数を入力", chips: ["学校名", "出演人数", "配置を変えるか選択"], tip: separatePrograms ? "演目ごとに配置を変える場合は、続けて各演目名と人数を入力します。" : "配置が同じなら、演目ごとの設定は選ばなくて大丈夫です。" },
+    2: { title: separatePrograms ? "演目ごとに配置図をつくる" : "出演者を自動で配置する", chips: separatePrograms ? ["演目タブを選ぶ", "出演者を並べる", "ドラッグで調整"] : ["配置先を選ぶ", "出演者を確認", "ドラッグで調整"], tip: separatePrograms ? "演目タブごとに配置は保存されます。設定し終えたら「舞台備品へ進む」を押してください。" : "ひな壇または前方舞台を選び、必要なら扇状配置も使えます。" },
+    3: { title: "必要な舞台備品だけを追加", chips: ["数量を決める", "備品を追加", "赤枠を動かす"], tip: "マイク類は数を増やすと配置図にも追加されます。不要になった備品は配置図の × で外せます。" },
+    4: { title: "全演目共通の申請を入力", chips: ["車で搬入するか", "音響・映像", "担当者への要望"], tip: separatePrograms ? "この内容はすべての演目で共通です。演目別の配置を設定し終えてから入力します。" : "搬入や音響など、当日の設営に必要な共通情報を入力します。" },
+    5: { title: "最後に確認して提出", chips: ["未入力を確認", "必要なら戻る", "提出する"], tip: "提出後は管理者が設営資料として確認します。学校担当者の作業はここで完了です。" },
+  }[step] ?? { title: "入力を進める", chips: [], tip: "" };
+  return <section className="flow-guide" aria-live="polite"><div className="flow-guide-head"><span>{step}</span><div><p>この画面でやること</p><h2>{guide.title}</h2></div><b>MISSION</b></div><div className="flow-guide-chips">{guide.chips.map((chip, index) => <span key={chip}><i>{index + 1}</i>{chip}</span>)}</div><p className="flow-guide-tip"><b>ポイント</b>{guide.tip}</p></section>;
 }
 
 function Field({ label, type, value, options, placeholder, suffix, onChange }: { label: string; type: "text" | "number" | "select"; value?: string; options?: string[]; placeholder?: string; suffix?: string; onChange: (value: string) => void }) {
