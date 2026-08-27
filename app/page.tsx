@@ -5,7 +5,7 @@ import { PointerEvent, useEffect, useRef, useState } from "react";
 type StageObject = { id: number; label: string; icon: string; kind: "instrument" | "stand" | "chair"; x: number; y: number; power: boolean };
 type StagePoint = { left: number; top: number };
 type PlayerSeat = "player" | "folding" | "none";
-type ProgramLayout = { fanLayout: boolean; objects: StageObject[]; playerPositions: Record<number, StagePoint>; playerLabels: Record<number, string>; playerSeats: Record<number, PlayerSeat> };
+type ProgramLayout = { fanLayout: boolean; autoPlacement?: "riser" | "floor"; objects: StageObject[]; playerPositions: Record<number, StagePoint>; playerLabels: Record<number, string>; playerSeats: Record<number, PlayerSeat> };
 type SignedInUser = { email: string; name: string; role: "admin" | "viewer" };
 
 declare global {
@@ -53,9 +53,9 @@ export default function Home() {
   const [schoolName, setSchoolName] = useState("");
   const [performerTotal, setPerformerTotal] = useState(0);
   const [layouts, setLayouts] = useState<Record<number, ProgramLayout>>({
-    0: { fanLayout: false, objects: [], playerPositions: {}, playerLabels: blankPlayerLabels(), playerSeats: {} },
-    1: { fanLayout: false, objects: [], playerPositions: {}, playerLabels: blankPlayerLabels(), playerSeats: {} },
-    2: { fanLayout: false, objects: [], playerPositions: {}, playerLabels: blankPlayerLabels(), playerSeats: {} },
+    0: { fanLayout: false, autoPlacement: "riser", objects: [], playerPositions: {}, playerLabels: blankPlayerLabels(), playerSeats: {} },
+    1: { fanLayout: false, autoPlacement: "riser", objects: [], playerPositions: {}, playerLabels: blankPlayerLabels(), playerSeats: {} },
+    2: { fanLayout: false, autoPlacement: "riser", objects: [], playerPositions: {}, playerLabels: blankPlayerLabels(), playerSeats: {} },
   });
   const [carDelivery, setCarDelivery] = useState<"有" | "無">("無");
   const [deliveryDate, setDeliveryDate] = useState("当日（11/14 10時〜）");
@@ -195,6 +195,7 @@ export default function Home() {
   const layoutKey = separatePrograms ? activeProgram : 0;
   const activeLayout = layouts[layoutKey];
   const fanLayout = activeLayout.fanLayout;
+  const autoPlacement = activeLayout.autoPlacement ?? "riser";
   const objects = activeLayout.objects;
   const updateLayoutAt = (targetLayoutKey: number, updater: (layout: ProgramLayout) => ProgramLayout) => setLayouts((now) => ({ ...now, [targetLayoutKey]: updater(now[targetLayoutKey]) }));
   const updateLayout = (updater: (layout: ProgramLayout) => ProgramLayout) => updateLayoutAt(layoutKey, updater);
@@ -269,6 +270,11 @@ export default function Home() {
     }));
     setSaved(false);
   };
+  const setAutoPlacement = (value: "riser" | "floor") => {
+    updateLayout((now) => ({ ...now, autoPlacement: value, playerPositions: {} }));
+    setSelectedPlayerIndex(null);
+    setSaved(false);
+  };
   const clearStageLayout = () => {
     if (!window.confirm("この配置図の出演者・備品をすべてクリアしますか？")) return;
     updateLayout((now) => ({ ...now, fanLayout: false, objects: [], playerPositions: {}, playerLabels: blankPlayerLabels(), playerSeats: {} }));
@@ -305,6 +311,15 @@ export default function Home() {
     if (draggingPlayerIndex !== null) updateLayout((now) => ({ ...now, playerPositions: { ...now.playerPositions, [draggingPlayerIndex]: { left: x, top: y } } }));
   };
   const playerPosition = (position: number) => {
+    if (autoPlacement === "floor") {
+      const row = Math.floor(position / 16);
+      const inRow = position % 16;
+      const rowSize = Math.min(16, players.length - row * 16);
+      if (!fanLayout) return { left: Number((13 + inRow * (74 / Math.max(1, rowSize - 1))).toFixed(3)), top: Number((48 + row * 6.3).toFixed(3)) };
+      const angle = 202 + inRow * (136 / Math.max(1, rowSize - 1));
+      const radius = 29 - row * 4.5;
+      return { left: Number((50 + Math.cos((angle * Math.PI) / 180) * radius * 1.28).toFixed(3)), top: Number((82 + Math.sin((angle * Math.PI) / 180) * radius).toFixed(3)) };
+    }
     const riserUpperCount = 14;
     const riserLowerCount = 16;
     const riserCount = riserUpperCount + riserLowerCount;
@@ -353,6 +368,7 @@ export default function Home() {
             <div className="card-head"><div><p className="mini-label">STAGE LAYOUT / {separatePrograms ? `PROGRAM ${activeProgram + 1}` : "COMMON LAYOUT"}</p><h2>舞台配置図 <span className="view-hint">（{separatePrograms ? programs[layoutKey] : "共通配置"}）</span></h2></div><div className="stage-actions"><button className="clear-layout" onClick={clearStageLayout}>この配置図をクリア</button><label className="fan-toggle"><input type="checkbox" checked={fanLayout} onChange={(e) => { updateLayout((now) => ({ ...now, fanLayout: e.target.checked })); setSaved(false); }} /><span />ひな壇以外を扇状に配置</label></div></div>
             <div className="stage-legend"><span><i className="legend-coral" />出演者 {placedPlayerCount}名</span><span><i className="legend-navy" />固定備品</span><span><i className="legend-power" />電源使用</span><span>出演者・備品をドラッグして配置</span><span>備品右上の × で削除</span></div>
             <div className="stage-howto" role="note"><b>配置のしかた</b><ol><li>基本情報の出演人数を入れると、出演者のみが自動で並びます</li><li>必要な椅子・マイク類の数を右側で指定します</li><li>配置後はドラッグで移動し、不要な備品は右上の × で外します</li></ol></div>
+            <section className="auto-placement-picker" aria-labelledby="auto-placement-title"><div><b id="auto-placement-title">出演者の自動配置先</b><small>選び直すと、出演者を自動で並べ直します。</small></div><div role="group" aria-label="出演者の自動配置先"><button type="button" className={autoPlacement === "riser" ? "is-active" : ""} aria-pressed={autoPlacement === "riser"} onClick={() => setAutoPlacement("riser")}><span>ひな壇を埋める</span><small>ひな壇から順に配置</small></button><button type="button" className={autoPlacement === "floor" ? "is-active" : ""} aria-pressed={autoPlacement === "floor"} onClick={() => setAutoPlacement("floor")}><span>ひな壇の下に並べる</span><small>前方の舞台に配置</small></button></div></section>
             <div className="stage-outline"><div className="stage-dimension top">奥行 {FIXED_STAGE_SIZE.depth}m</div><div className="stage-dimension bottom">幅 {FIXED_STAGE_SIZE.width}m</div><div className="curtain left" /><div className="curtain right" />
               <div className="stage-floor large-floor" ref={stageRef} onPointerMove={moveObject} onPointerUp={() => { setDraggingId(null); setDraggingPlayerIndex(null); }} onPointerCancel={() => { setDraggingId(null); setDraggingPlayerIndex(null); }}>
                 <div className="fixed-piano"><span>🎹 固定</span><b>PIANO</b></div>
