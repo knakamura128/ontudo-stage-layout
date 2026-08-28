@@ -5,7 +5,8 @@ import { PointerEvent, useEffect, useRef, useState } from "react";
 type StageObject = { id: number; label: string; icon: string; kind: "instrument" | "stand" | "chair"; x: number; y: number; power: boolean };
 type StagePoint = { left: number; top: number };
 type PlayerSeat = "player" | "folding" | "none";
-type ProgramLayout = { fanLayout: boolean; autoPlacement?: "riser" | "floor"; objects: StageObject[]; playerPositions: Record<number, StagePoint>; playerLabels: Record<number, string>; playerSeats: Record<number, PlayerSeat> };
+type ProgramLayout = { fanLayout: boolean; autoPlacement?: "riser" | "floor"; showPerformers?: boolean; objects: StageObject[]; playerPositions: Record<number, StagePoint>; playerLabels: Record<number, string>; playerSeats: Record<number, PlayerSeat> };
+type PlayerDrag = { indices: number[]; startX: number; startY: number; positions: Record<number, StagePoint> };
 type SignedInUser = { email: string; name: string; role: "admin" | "viewer" };
 
 declare global {
@@ -71,8 +72,10 @@ export default function Home() {
   const [poweredLoading, setPoweredLoading] = useState<string[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
-  const [draggingPlayerIndex, setDraggingPlayerIndex] = useState<number | null>(null);
+  const [draggingPlayers, setDraggingPlayers] = useState<PlayerDrag | null>(null);
   const [selectedPlayerIndex, setSelectedPlayerIndex] = useState<number | null>(null);
+  const [selectedPlayerIndices, setSelectedPlayerIndices] = useState<number[]>([]);
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
   const [counts, setCounts] = useState({ microphones: 0, micStands: 0, playerChairs: 0, foldingChairs: 0 });
   const [customEquipmentName, setCustomEquipmentName] = useState("");
   const [notes, setNotes] = useState("");
@@ -208,6 +211,7 @@ export default function Home() {
   const activeLayout = layouts[layoutKey];
   const fanLayout = activeLayout.fanLayout;
   const autoPlacement = activeLayout.autoPlacement ?? "riser";
+  const showPerformers = activeLayout.showPerformers !== false;
   const objects = activeLayout.objects;
   const updateLayoutAt = (targetLayoutKey: number, updater: (layout: ProgramLayout) => ProgramLayout) => setLayouts((now) => ({ ...now, [targetLayoutKey]: updater(now[targetLayoutKey]) }));
   const updateLayout = (updater: (layout: ProgramLayout) => ProgramLayout) => updateLayoutAt(layoutKey, updater);
@@ -270,7 +274,7 @@ export default function Home() {
     const id = Date.now() + objects.length;
     updateLayout((now) => ({ ...now, objects: [...now.objects, { id, label, icon, kind, x: 50 + (now.objects.length % 3) * 7, y: 66 + (now.objects.length % 2) * 8, power }] }));
     setSelectedId(id);
-    setSelectedPlayerIndex(null);
+    setPlayerSelection([]);
     setSaved(false);
   };
   const toggleStageObject = (label: string, icon: string, kind: StageObject["kind"], enabled: boolean) => {
@@ -284,7 +288,7 @@ export default function Home() {
   };
   const setAutoPlacement = (value: "riser" | "floor") => {
     updateLayout((now) => ({ ...now, autoPlacement: value, fanLayout: value === "floor" ? now.fanLayout : false, playerPositions: {} }));
-    setSelectedPlayerIndex(null);
+    setPlayerSelection([]);
     setSaved(false);
   };
   const clearStageLayout = () => {
@@ -294,7 +298,7 @@ export default function Home() {
     if (separatePrograms) setProgramPerformers((now) => now.map((count, index) => index === layoutKey ? 0 : count));
     else setPerformerTotal(0);
     setSelectedId(null);
-    setSelectedPlayerIndex(null);
+    setPlayerSelection([]);
     setSaved(false);
   };
   const removeObject = (id: number) => {
@@ -311,16 +315,29 @@ export default function Home() {
     if (seat !== "none") setCounts((now) => ({ ...now, [seat === "player" ? "playerChairs" : "foldingChairs"]: Math.max(0, now[seat === "player" ? "playerChairs" : "foldingChairs"] - 1) }));
     if (separatePrograms) setProgramPerformers((now) => now.map((count, current) => current === layoutKey ? Math.max(0, count - 1) : count));
     else setPerformerTotal((now) => Math.max(0, now - 1));
-    setSelectedPlayerIndex(null);
+    setPlayerSelection([]);
     setSaved(false);
   };
   const moveObject = (event: PointerEvent<HTMLElement>) => {
-    if ((draggingId === null && draggingPlayerIndex === null) || !stageRef.current) return;
+    if ((draggingId === null && draggingPlayers === null) || !stageRef.current) return;
     const bounds = stageRef.current.getBoundingClientRect();
     const x = Math.min(94, Math.max(6, ((event.clientX - bounds.left) / bounds.width) * 100));
     const y = Math.min(90, Math.max(8, ((event.clientY - bounds.top) / bounds.height) * 100));
     if (draggingId !== null) updateLayout((now) => ({ ...now, objects: now.objects.map((item) => item.id === draggingId ? { ...item, x, y } : item) }));
-    if (draggingPlayerIndex !== null) updateLayout((now) => ({ ...now, playerPositions: { ...now.playerPositions, [draggingPlayerIndex]: { left: x, top: y } } }));
+    if (draggingPlayers !== null) {
+      const deltaX = ((event.clientX - draggingPlayers.startX) / bounds.width) * 100;
+      const deltaY = ((event.clientY - draggingPlayers.startY) / bounds.height) * 100;
+      updateLayout((now) => ({
+        ...now,
+        playerPositions: {
+          ...now.playerPositions,
+          ...Object.fromEntries(draggingPlayers.indices.map((index) => [index, {
+            left: Math.min(94, Math.max(6, draggingPlayers.positions[index].left + deltaX)),
+            top: Math.min(90, Math.max(8, draggingPlayers.positions[index].top + deltaY)),
+          }])),
+        },
+      }));
+    }
   };
   const playerPosition = (position: number) => {
     const performersPerRow = 15;
@@ -359,6 +376,25 @@ export default function Home() {
     const radius = 29 - row * (16 / Math.max(1, rowCount - 1));
     return { left: Number((50 + Math.cos((angle * Math.PI) / 180) * radius * 1.28).toFixed(3)), top: Number((82 + Math.sin((angle * Math.PI) / 180) * radius).toFixed(3)) };
   };
+  const setPlayerSelection = (indices: number[]) => { setSelectedPlayerIndices(indices); setSelectedPlayerIndex(indices.length === 1 ? indices[0] : null); };
+  const clearPlayerSelection = () => setPlayerSelection([]);
+  const startPlayerDrag = (index: number, event: PointerEvent<HTMLButtonElement>) => {
+    const additive = multiSelectMode || event.shiftKey;
+    const indices = additive ? (selectedPlayerIndices.includes(index) ? selectedPlayerIndices : [...selectedPlayerIndices, index]) : [index];
+    setPlayerSelection(indices);
+    const positions = Object.fromEntries(indices.map((playerIndex) => [playerIndex, activeLayout.playerPositions[playerIndex] ?? playerPosition(playerIndex)]));
+    stageRef.current?.setPointerCapture(event.pointerId);
+    setDraggingPlayers({ indices, startX: event.clientX, startY: event.clientY, positions });
+    setDraggingId(null);
+    setSelectedId(null);
+    setSaved(false);
+  };
+  const setPerformerPlacement = (enabled: boolean) => {
+    updateLayout((now) => ({ ...now, showPerformers: enabled }));
+    clearPlayerSelection();
+    setMultiSelectMode(false);
+    setSaved(false);
+  };
   const navigateToStep = (step: number) => {
     const targets: Record<number, string> = { 1: "organization", 2: "stage", 3: "stage-equipment", 4: "common-application", 5: "precheck" };
     setCurrentStep(step);
@@ -385,27 +421,30 @@ export default function Home() {
         {currentStep === 1 && <><section className="request-summary" id="organization">
           <label><span>学校名</span><input value={schoolName} onChange={(event) => { setSchoolName(event.target.value); setSaved(false); }} placeholder="学校名を入力" /></label>{!separatePrograms && <label><span>出演人数</span><div className="summary-number"><input type="number" value={performerTotal || ""} min="0" max={MAX_PERFORMERS} onChange={(event) => changePerformerTotal(Number(event.target.value))} placeholder="0" /><small>名</small></div></label>}<label className="separate-program-toggle"><input type="checkbox" checked={separatePrograms} onChange={(event) => { const enabled = event.target.checked; setSeparatePrograms(enabled); if (enabled) { const count = programPerformers[0] || performerTotal; setProgramPerformers((now) => [count, now[1], now[2]]); syncPerformerCount(count, 0); } else setActiveProgram(0); setSaved(false); }} /><span aria-hidden="true" /><span className="toggle-copy"><b>演目ごとに配置を変える</b><small>配置変更がある学校のみ選択してください</small></span></label>
         </section>
-        {separatePrograms && <section className="program-layout-card"><div><p className="mini-label">PROGRAM-SPECIFIC LAYOUTS</p><h2>演目ごとの舞台配置</h2><p>配置を変える演目だけ、演目名と出演人数を入力してください。提出資料は演目ごとに1ページずつ出力されます。</p></div><div className="program-inputs">{[0, 1, 2].map((index) => <label key={index}><span>演目 {index + 1}</span><input value={programs[index]} onChange={(event) => { const value = event.target.value; setPrograms((now) => now.map((program, current) => current === index ? value : program)); setSaved(false); }} placeholder="例：合奏『風のシンフォニー』" /><span>出演人数</span><div className="summary-number"><input type="number" min="0" max={MAX_PERFORMERS} value={programPerformers[index] || ""} onChange={(event) => { const value = Math.max(0, Math.min(MAX_PERFORMERS, Number(event.target.value))); setProgramPerformers((now) => now.map((count, current) => current === index ? value : count)); syncPerformerCount(value, index); setSaved(false); }} /><small>名</small></div></label>)}</div><div className="program-tabs" aria-label="設定する演目">{[0, 1, 2].map((index) => <button key={index} className={activeProgram === index ? "is-active" : ""} onClick={() => { setActiveProgram(index); setSelectedId(null); setSelectedPlayerIndex(null); }} disabled={!programs[index].trim()}>{programs[index].trim() || `演目 ${index + 1}（未入力）`}</button>)}</div></section>}
+        {separatePrograms && <section className="program-layout-card"><div><p className="mini-label">PROGRAM-SPECIFIC LAYOUTS</p><h2>演目ごとの舞台配置</h2><p>配置を変える演目だけ、演目名と出演人数を入力してください。提出資料は演目ごとに1ページずつ出力されます。</p></div><div className="program-inputs">{[0, 1, 2].map((index) => <label key={index}><span>演目 {index + 1}</span><input value={programs[index]} onChange={(event) => { const value = event.target.value; setPrograms((now) => now.map((program, current) => current === index ? value : program)); setSaved(false); }} placeholder="例：合奏『風のシンフォニー』" /><span>出演人数</span><div className="summary-number"><input type="number" min="0" max={MAX_PERFORMERS} value={programPerformers[index] || ""} onChange={(event) => { const value = Math.max(0, Math.min(MAX_PERFORMERS, Number(event.target.value))); setProgramPerformers((now) => now.map((count, current) => current === index ? value : count)); syncPerformerCount(value, index); setSaved(false); }} /><small>名</small></div></label>)}</div><div className="program-tabs" aria-label="設定する演目">{[0, 1, 2].map((index) => <button key={index} className={activeProgram === index ? "is-active" : ""} onClick={() => { setActiveProgram(index); setSelectedId(null); clearPlayerSelection(); }} disabled={!programs[index].trim()}>{programs[index].trim() || `演目 ${index + 1}（未入力）`}</button>)}</div></section>}
         {stepMessage && <p className="step-message" role="alert">{stepMessage}</p>}<div className="step-actions"><button onClick={goToNextStep}>配置図へ進む →</button></div></>}
 
         {(currentStep === 2 || currentStep === 3) && <><section className="notice-card"><b>配置の手順</b><p>{separatePrograms ? "演目タブを切り替えて、演目ごとの出演者・備品配置を設定します。共通の搬入・音響申請は、このあと最後に入力します。" : "出演人数を入力すると、出演者が自動で配置されます。必要な椅子と舞台備品の数を指定し、配置図上でドラッグして位置を調整してください。"}</p></section><div className="layout-grid detailed-grid">
           <section className="stage-card detailed-stage-card" id="stage">
             <div className="card-head"><div><p className="mini-label">STAGE LAYOUT / {separatePrograms ? `PROGRAM ${activeProgram + 1}` : "COMMON LAYOUT"}</p><h2>舞台配置図 <span className="view-hint">（{separatePrograms ? programs[layoutKey] : "共通配置"}）</span></h2></div><div className="stage-actions"><button className="clear-layout" onClick={clearStageLayout}>この配置図をクリア</button></div></div>
-            <div className="stage-legend"><span><i className="legend-coral" />出演者 {placedPlayerCount}名</span><span><i className="legend-navy" />固定備品</span><span><i className="legend-power" />電源使用</span><span>出演者・備品をドラッグして配置</span><span>備品右上の × で削除</span></div>
-            <div className="stage-howto" role="note"><b>配置のしかた</b><ol><li>基本情報の出演人数を入れると、出演者のみが自動で並びます</li><li>必要な椅子・マイク類の数を右側で指定します</li><li>配置後はドラッグで移動し、不要な備品は右上の × で外します</li></ol></div>
-            <section className="auto-placement-picker" aria-labelledby="auto-placement-title"><div><b id="auto-placement-title">出演者の自動配置先</b><small>選び直すと、出演者を自動で並べ直します。</small></div><div role="group" aria-label="出演者の自動配置先"><button type="button" className={autoPlacement === "riser" ? "is-active" : ""} aria-pressed={autoPlacement === "riser"} onClick={() => setAutoPlacement("riser")}><span>ひな壇を埋める</span><small>ひな壇から順に配置</small></button><button type="button" className={autoPlacement === "floor" ? "is-active" : ""} aria-pressed={autoPlacement === "floor"} onClick={() => setAutoPlacement("floor")}><span>ひな壇の下に並べる</span><small>前方の舞台に配置</small></button></div><label className={`auto-fan-toggle ${autoPlacement === "floor" ? "" : "is-disabled"}`}><input type="checkbox" disabled={autoPlacement !== "floor"} checked={fanLayout} onChange={(e) => { updateLayout((now) => ({ ...now, fanLayout: e.target.checked, playerPositions: {} })); setSaved(false); }} /><span /><b>ひな壇の下を扇状に配置</b><small>{autoPlacement === "floor" ? "前方舞台に並べる出演者を、ゆるい弧に並べます。" : "「ひな壇の下に並べる」を選ぶと利用できます。"}</small></label></section>
+            <div className="stage-legend"><span><i className="legend-coral" />出演者 {currentPerformerTotal}名{showPerformers ? "を配置" : "（配置なし）"}</span><span><i className="legend-navy" />固定備品</span><span><i className="legend-power" />電源使用</span><span>出演者・備品をドラッグして配置</span><span>備品右上の × で削除</span></div>
+            <div className="stage-howto" role="note"><b>配置のしかた</b><ol><li>出演者の位置を資料に載せない場合は「配置しない」を選びます</li><li>配置する場合は、出演人数に合わせて自動で並びます</li><li>個別または複数選択で、まとめてドラッグして調整できます</li></ol></div>
+            <section className="performer-placement-control" aria-labelledby="performer-placement-title"><div><b id="performer-placement-title">出演者を配置しますか？</b><small>人数だけを提出し、位置を載せないこともできます。</small></div><div role="group" aria-label="出演者を配置するか"><button type="button" className={showPerformers ? "is-active" : ""} aria-pressed={showPerformers} onClick={() => setPerformerPlacement(true)}><span>配置する</span><small>配置図に出演者を表示</small></button><button type="button" className={!showPerformers ? "is-active" : ""} aria-pressed={!showPerformers} onClick={() => setPerformerPlacement(false)}><span>配置しない</span><small>人数のみ資料に記載</small></button></div></section>
+            {showPerformers && <><section className="auto-placement-picker" aria-labelledby="auto-placement-title"><div><b id="auto-placement-title">出演者の自動配置先</b><small>選び直すと、出演者を自動で並べ直します。</small></div><div role="group" aria-label="出演者の自動配置先"><button type="button" className={autoPlacement === "riser" ? "is-active" : ""} aria-pressed={autoPlacement === "riser"} onClick={() => setAutoPlacement("riser")}><span>ひな壇を埋める</span><small>ひな壇から順に配置</small></button><button type="button" className={autoPlacement === "floor" ? "is-active" : ""} aria-pressed={autoPlacement === "floor"} onClick={() => setAutoPlacement("floor")}><span>ひな壇の下に並べる</span><small>前方の舞台に配置</small></button></div><label className={`auto-fan-toggle ${autoPlacement === "floor" ? "" : "is-disabled"}`}><input type="checkbox" disabled={autoPlacement !== "floor"} checked={fanLayout} onChange={(e) => { updateLayout((now) => ({ ...now, fanLayout: e.target.checked, playerPositions: {} })); setSaved(false); }} /><span /><b>ひな壇の下を扇状に配置</b><small>{autoPlacement === "floor" ? "前方舞台に並べる出演者を、ゆるい弧に並べます。" : "「ひな壇の下に並べる」を選ぶと利用できます。"}</small></label></section><section className="multi-select-toolbar" aria-label="出演者の複数選択"><div><b>複数人をまとめて動かす</b><small>PCはShift＋クリック、スマホは「複数選択」をONにして出演者をタップします。</small></div><div><button type="button" className={multiSelectMode ? "is-active" : ""} aria-pressed={multiSelectMode} onClick={() => setMultiSelectMode((now) => !now)}>{multiSelectMode ? "複数選択中" : "複数選択"}</button><button type="button" onClick={() => setPlayerSelection(players.map((player) => player.index).filter((index) => Boolean(activeLayout.playerLabels[index])))}>全出演者を選択</button>{selectedPlayerIndices.length > 0 && <button type="button" className="clear-selection" onClick={clearPlayerSelection}>選択解除</button>}</div></section></>}
             <div className="stage-outline"><div className="stage-dimension top">奥行 {FIXED_STAGE_SIZE.depth}m</div><div className="stage-dimension bottom">幅 {FIXED_STAGE_SIZE.width}m</div><div className="curtain left" /><div className="curtain right" />
-              <div className="stage-floor large-floor" ref={stageRef} onPointerMove={moveObject} onPointerUp={() => { setDraggingId(null); setDraggingPlayerIndex(null); }} onPointerCancel={() => { setDraggingId(null); setDraggingPlayerIndex(null); }}>
+              <div className="stage-floor large-floor" ref={stageRef} onPointerMove={moveObject} onPointerUp={() => { setDraggingId(null); setDraggingPlayers(null); }} onPointerCancel={() => { setDraggingId(null); setDraggingPlayers(null); }}>
                 <div className="fixed-piano"><span>🎹 固定</span><b>PIANO</b></div>
                 <div className="riser riser-top"><b>ひな壇 2段目</b><span>椅子 14</span><small>横 12.6m × 縦 1.2m</small>{Array.from({ length: 6 }).map((_, i) => <i key={i} />)}</div>
                 <div className="riser riser-low"><b>ひな壇 1段目</b><span>椅子 16</span><small>横 10.8m × 縦 0.9m</small>{Array.from({ length: 7 }).map((_, i) => <i key={i} />)}</div>
                 {!usePiano && <div className="unused-label">ピアノ 不使用</div>}
-                {players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "player"; return label ? <button className={`player-dot ${seat} ${selectedPlayerIndex === index ? "is-selected" : ""}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }} key={player.index} onClick={() => { setSelectedPlayerIndex(index); setSelectedId(null); }} onPointerDown={(event) => { event.stopPropagation(); stageRef.current?.setPointerCapture(event.pointerId); setDraggingPlayerIndex(index); setDraggingId(null); setSelectedPlayerIndex(index); setSelectedId(null); setSaved(false); }} aria-label={`${label}の出演者を選択して移動`}><span>{label}</span></button> : null; })}
-                {objects.map((item) => <div key={item.id} className="stage-object-wrap" style={{ left: `${item.x}%`, top: `${item.y}%` }}><button className={`stage-object ${item.kind} ${selectedId === item.id ? "is-selected" : ""}`} onClick={() => { setSelectedId(item.id); setSelectedPlayerIndex(null); }} onPointerDown={(event) => { event.stopPropagation(); stageRef.current?.setPointerCapture(event.pointerId); setDraggingId(item.id); setDraggingPlayerIndex(null); setSelectedId(item.id); setSelectedPlayerIndex(null); setSaved(false); }} aria-label={`${item.label}を選択して移動`}><span className="stage-object-icon">{item.icon}</span><span>{item.label}</span>{item.power && <em>⚡</em>}</button><button className="stage-object-delete" type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); removeObject(item.id); }} aria-label={`${item.label}を削除`} title={`${item.label}を削除`}>×</button></div>)}
+                {!showPerformers && <div className="performers-skipped" aria-label={`出演者 ${currentPerformerTotal}名は配置図に表示しません`}><span>👥</span><b>出演者の配置なし</b><small>出演人数 {currentPerformerTotal}名</small></div>}
+                {showPerformers && players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "player"; return label ? <button className={`player-dot ${seat} ${selectedPlayerIndices.includes(index) ? "is-selected" : ""}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }} key={player.index} onPointerDown={(event) => { event.stopPropagation(); startPlayerDrag(index, event); }} aria-label={`${label}の出演者を${selectedPlayerIndices.includes(index) ? "選択中。" : "選択して"}移動`}><span>{label}</span></button> : null; })}
+                {objects.map((item) => <div key={item.id} className="stage-object-wrap" style={{ left: `${item.x}%`, top: `${item.y}%` }}><button className={`stage-object ${item.kind} ${selectedId === item.id ? "is-selected" : ""}`} onClick={() => { setSelectedId(item.id); clearPlayerSelection(); }} onPointerDown={(event) => { event.stopPropagation(); stageRef.current?.setPointerCapture(event.pointerId); setDraggingId(item.id); setDraggingPlayers(null); setSelectedId(item.id); clearPlayerSelection(); setSaved(false); }} aria-label={`${item.label}を選択して移動`}><span className="stage-object-icon">{item.icon}</span><span>{item.label}</span>{item.power && <em>⚡</em>}</button><button className="stage-object-delete" type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); removeObject(item.id); }} aria-label={`${item.label}を削除`} title={`${item.label}を削除`}>×</button></div>)}
                 <div className="audience">客　席</div>
               </div>
             </div>
             <div className="stage-measurements" aria-label="舞台寸法"><span><b>後方ひな壇</b> 横 12.6m × 縦 1.2m</span><span><b>前方ひな壇</b> 横 10.8m × 縦 0.9m</span><span><b>前方スペース</b> ひな壇前方から舞台袖まで 5.0m + 1.2m</span></div>
+            {selectedPlayerIndices.length > 1 && <div className="object-editor performer-editor-selected multi-performer-editor" aria-live="polite"><b>出演者 {selectedPlayerIndices.length}名を選択中</b><small>選択した出演者を、どれか1人をドラッグしてまとめて移動できます。</small><button className="delete-player" onClick={clearPlayerSelection}>選択解除</button></div>}
             {selectedPlayerIndex !== null && <div className="object-editor performer-editor-selected" aria-live="polite"><b>出演者を選択中</b><small>配置をドラッグで調整できます。削除すると出演人数も1名減ります。</small><button className="delete-player" onClick={() => removePlayer(selectedPlayerIndex)}>削除</button></div>}
             {selectedId !== null && <div className="object-editor"><b>選択中の配置物</b><span>{objects.find((item) => item.id === selectedId)?.icon} {objects.find((item) => item.id === selectedId)?.label}</span><label><input type="checkbox" checked={objects.find((item) => item.id === selectedId)?.power ?? false} onChange={(e) => { updateLayout((now) => ({ ...now, objects: now.objects.map((item) => item.id === selectedId ? { ...item, power: e.target.checked } : item) })); if (e.target.checked) setUsePower(true); setSaved(false); }} />電源を使用</label><button onClick={() => removeObject(selectedId)}>削除</button></div>}
           </section>
@@ -434,7 +473,7 @@ export default function Home() {
         <section className="notes-card"><div><p className="mini-label">REQUESTS FOR SETUP STAFF</p><h2>その他担当者への要望</h2><p>当日の動きや配慮が必要なことがあれば、任意で入力してください。</p></div><textarea value={notes} onChange={(event) => { setNotes(event.target.value); setSaved(false); }} placeholder={"例）舞台へ入るタイミングを、ピアノの音をきっかけにしたいです。\n例）車椅子の出演者がいます。"} /></section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(3)}>← 舞台備品へ戻る</button><button onClick={goToNextStep}>確認・提出へ進む →</button></div></>}
         {currentStep === 5 && <><section className="precheck-card" id="precheck"><div><p className="mini-label">PRE-SUBMISSION CHECK</p><h2>提出前チェック</h2><p>必須項目が入力されていれば提出できます。配置物・備品がない学校も提出可能です。</p></div><ul>{submissionChecks.map((item) => <li key={item.label} className={item.ok ? "is-ok" : ""}>{item.ok ? "✓" : "!"} {item.label}<span>{item.ok ? "入力済み" : "未入力"}</span></li>)}</ul></section>
         <section className="bottom-card" id="submit"><div><p className="mini-label">SUBMIT</p><h2>この内容で舞台配置を登録しますか？</h2><p>{submissionMessage || "内容を確認して、提出してください。"}</p></div><div className="submit-actions"><button className="pdf-button" onClick={() => void saveRegistration(false)} disabled={submitModal === "submitting"}>下書きを保存</button><button className={`submit-button ${saved ? "is-done" : ""}`} onClick={() => void saveRegistration(true)} disabled={submitModal === "submitting"} aria-busy={submitModal === "submitting"}>{submitModal === "submitting" ? "提出中…" : saved ? "✓　提出済み" : "舞台配置を提出する　→"}</button></div></section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(4)}>← 共通申請へ戻る</button></div></>}
-        <section className="submission-pdf" aria-hidden="true"><header><p>令和8年度　音楽のつどい</p><h1>舞台配置・使用機器等 提出資料</h1><small>作成日　{new Intl.DateTimeFormat("ja-JP", { dateStyle: "long", timeZone: "Asia/Tokyo" }).format(new Date())}</small></header><div className="pdf-meta"><div><span>学校名</span><b>{schoolName || "未入力"}</b></div><div><span>出演人数</span><b>{(separatePrograms ? programPerformers[activeProgram] : performerTotal) || placedPlayerCount}名</b></div><div><span>配置</span><b>{separatePrograms ? programs[activeProgram] || "未入力" : "共通配置"}</b></div></div><section className="pdf-section"><h2>舞台配置図（幅 {FIXED_STAGE_SIZE.width}m × 奥行 {FIXED_STAGE_SIZE.depth}m）</h2><div className="pdf-stage"><div className="pdf-piano">PIANO</div><div className="pdf-riser pdf-riser-top">ひな壇 2段目　椅子14</div><div className="pdf-riser pdf-riser-low">ひな壇 1段目　椅子16</div>{players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "player"; return label ? <span key={player.index} className={`pdf-player ${seat}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }}>{label}</span> : null; })}{objects.map((item) => <span key={item.id} className={`pdf-object ${item.kind}`} style={{ left: `${item.x}%`, top: `${item.y}%` }}>{item.icon} {item.label}{item.power ? " ⚡" : ""}</span>)}<div className="pdf-audience">客　席</div></div><div className="pdf-stage-measurements">後方ひな壇：横12.6m × 縦1.2m　／　前方ひな壇：横10.8m × 縦0.9m　／　ひな壇前方から舞台袖まで：5.0m + 1.2m</div></section><div className="pdf-info-grid"><section><h2>利用備品・数量</h2><dl><div><dt>ピアノ</dt><dd>{usePiano ? "使用" : "不使用"}</dd></div><div><dt>マイク</dt><dd>{counts.microphones}本</dd></div><div><dt>マイクスタンド</dt><dd>{counts.micStands}本</dd></div><div><dt>出演者椅子</dt><dd>{counts.playerChairs}脚</dd></div><div><dt>折り畳み椅子</dt><dd>{counts.foldingChairs}脚</dd></div><div><dt>電源（コンセント）</dt><dd>{usePower ? "使用" : "不使用"}</dd></div></dl></section><section><h2>搬入・音響</h2><dl><div><dt>車での搬入</dt><dd>{carDelivery}</dd></div><div><dt>搬入希望日</dt><dd>{deliveryDate}</dd></div><div><dt>搬入物</dt><dd>{loading.join("、") || "なし"}</dd></div><div><dt>音響・映像備品</dt><dd>{soundVideo}</dd></div><div><dt>音出し指示</dt><dd>{soundCue}</dd></div></dl></section></div><section className="pdf-notes"><h2>その他担当者への要望</h2><p>{notes || "なし"}</p></section><footer>教育委員会提出用／当日設営用資料</footer></section>
+        <section className="submission-pdf" aria-hidden="true"><header><p>令和8年度　音楽のつどい</p><h1>舞台配置・使用機器等 提出資料</h1><small>作成日　{new Intl.DateTimeFormat("ja-JP", { dateStyle: "long", timeZone: "Asia/Tokyo" }).format(new Date())}</small></header><div className="pdf-meta"><div><span>学校名</span><b>{schoolName || "未入力"}</b></div><div><span>出演人数</span><b>{(separatePrograms ? programPerformers[activeProgram] : performerTotal) || placedPlayerCount}名</b></div><div><span>配置</span><b>{separatePrograms ? programs[activeProgram] || "未入力" : "共通配置"}</b></div></div><section className="pdf-section"><h2>舞台配置図（幅 {FIXED_STAGE_SIZE.width}m × 奥行 {FIXED_STAGE_SIZE.depth}m）</h2><div className="pdf-stage"><div className="pdf-piano">PIANO</div><div className="pdf-riser pdf-riser-top">ひな壇 2段目　椅子14</div><div className="pdf-riser pdf-riser-low">ひな壇 1段目　椅子16</div>{showPerformers ? players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "player"; return label ? <span key={player.index} className={`pdf-player ${seat}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }}>{label}</span> : null; }) : <div className="pdf-performers-skipped">出演者の配置なし<br /><small>出演人数 {currentPerformerTotal}名</small></div>}{objects.map((item) => <span key={item.id} className={`pdf-object ${item.kind}`} style={{ left: `${item.x}%`, top: `${item.y}%` }}>{item.icon} {item.label}{item.power ? " ⚡" : ""}</span>)}<div className="pdf-audience">客　席</div></div><div className="pdf-stage-measurements">後方ひな壇：横12.6m × 縦1.2m　／　前方ひな壇：横10.8m × 縦0.9m　／　ひな壇前方から舞台袖まで：5.0m + 1.2m</div></section><div className="pdf-info-grid"><section><h2>利用備品・数量</h2><dl><div><dt>ピアノ</dt><dd>{usePiano ? "使用" : "不使用"}</dd></div><div><dt>マイク</dt><dd>{counts.microphones}本</dd></div><div><dt>マイクスタンド</dt><dd>{counts.micStands}本</dd></div><div><dt>出演者椅子</dt><dd>{counts.playerChairs}脚</dd></div><div><dt>折り畳み椅子</dt><dd>{counts.foldingChairs}脚</dd></div><div><dt>電源（コンセント）</dt><dd>{usePower ? "使用" : "不使用"}</dd></div></dl></section><section><h2>搬入・音響</h2><dl><div><dt>車での搬入</dt><dd>{carDelivery}</dd></div><div><dt>搬入希望日</dt><dd>{deliveryDate}</dd></div><div><dt>搬入物</dt><dd>{loading.join("、") || "なし"}</dd></div><div><dt>音響・映像備品</dt><dd>{soundVideo}</dd></div><div><dt>音出し指示</dt><dd>{soundCue}</dd></div></dl></section></div><section className="pdf-notes"><h2>その他担当者への要望</h2><p>{notes || "なし"}</p></section><footer>教育委員会提出用／当日設営用資料</footer></section>
       </div>
     </section>
     {onboardingOpen && <OnboardingGuide page={onboardingPage} onNext={() => onboardingPage < 2 ? setOnboardingPage((now) => now + 1) : closeOnboarding()} onSkip={closeOnboarding} />}
