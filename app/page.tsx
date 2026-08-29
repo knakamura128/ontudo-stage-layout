@@ -9,20 +9,6 @@ type ProgramLayout = { fanLayout: boolean; autoPlacement?: "riser" | "floor"; sh
 type PlayerDrag = { indices: number[]; startX: number; startY: number; positions: Record<number, StagePoint> };
 type SignedInUser = { email: string; name: string; role: "admin" | "viewer" };
 
-declare global {
-  interface Window {
-    google?: {
-      accounts: {
-        id: {
-          initialize: (config: { client_id: string; callback: (response: { credential: string }) => void; auto_select?: boolean }) => void;
-          renderButton: (element: HTMLElement, options: Record<string, string | number>) => void;
-        };
-      };
-    };
-  }
-}
-
-const GOOGLE_CLIENT_ID = "395301319192-sr44o695g8se9vkklp2485rb15jqpum2.apps.googleusercontent.com";
 const FIXED_STAGE_SIZE = { width: 15, depth: 12 };
 const MAX_PERFORMERS = 150;
 
@@ -46,7 +32,6 @@ const initialPlayerPositions = (() => {
 
 export default function Home() {
   const stageRef = useRef<HTMLDivElement>(null);
-  const googleButtonRef = useRef<HTMLDivElement>(null);
   const loadedEditIdRef = useRef<number | null>(null);
   const [programs, setPrograms] = useState(["", "", ""]);
   const [activeProgram, setActiveProgram] = useState(0);
@@ -81,8 +66,6 @@ export default function Home() {
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
   const [authUser, setAuthUser] = useState<SignedInUser | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [authError, setAuthError] = useState("");
   const [submissionMessage, setSubmissionMessage] = useState("");
   const [submitModal, setSubmitModal] = useState<"submitting" | "success" | null>(null);
   const [editingSubmissionId, setEditingSubmissionId] = useState<number | null>(null);
@@ -91,28 +74,11 @@ export default function Home() {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboardingPage, setOnboardingPage] = useState(0);
 
-  const completeGoogleSignIn = async (credential: string) => {
-    setAuthError("");
-    try {
-      const response = await fetch("/api/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ credential }),
-      });
-      const data = await response.json() as { user?: SignedInUser; error?: string };
-      if (!response.ok || !data.user) throw new Error(data.error || "ログインできませんでした。");
-      setAuthUser(data.user);
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "ログインできませんでした。");
-    }
-  };
-
   useEffect(() => {
     fetch("/api/auth/session")
       .then(async (response) => response.ok ? response.json() : null)
       .then((data: { user?: SignedInUser } | null) => setAuthUser(data?.user ?? null))
-      .catch(() => setAuthUser(null))
-      .finally(() => setAuthLoading(false));
+      .catch(() => setAuthUser(null));
   }, []);
 
   useEffect(() => {
@@ -122,35 +88,6 @@ export default function Home() {
   const closeOnboarding = () => {
     window.localStorage.setItem("music-stage-onboarding-seen", "1");
     setOnboardingOpen(false);
-  };
-
-  useEffect(() => {
-    if (authLoading || authUser || !googleButtonRef.current) return;
-    const renderGoogleButton = () => {
-      if (!window.google || !googleButtonRef.current) return;
-      googleButtonRef.current.replaceChildren();
-      window.google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: ({ credential }) => void completeGoogleSignIn(credential), auto_select: false });
-      window.google.accounts.id.renderButton(googleButtonRef.current, { type: "standard", theme: "outline", size: "large", text: "signin_with", shape: "pill", width: 220 });
-    };
-    const existing = document.querySelector<HTMLScriptElement>('script[src="https://accounts.google.com/gsi/client"]');
-    if (existing) {
-      if (window.google) renderGoogleButton();
-      else existing.addEventListener("load", renderGoogleButton, { once: true });
-      return () => existing.removeEventListener("load", renderGoogleButton);
-    }
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.addEventListener("load", renderGoogleButton, { once: true });
-    document.head.appendChild(script);
-    return () => script.removeEventListener("load", renderGoogleButton);
-  }, [authLoading, authUser]);
-
-  const signOut = async () => {
-    await fetch("/api/auth/signout", { method: "POST" });
-    setAuthUser(null);
-    setSaved(false);
   };
 
   const isAdmin = authUser?.role === "admin";
@@ -410,8 +347,7 @@ export default function Home() {
     </aside>
 
     <section className="workspace">
-      <header className="topbar"><div className="crumbs">ホーム <span>／</span> 舞台配置</div><div className="account auth-account"><a className="top-admin-link" href="/admin">⚙ 管理者ページ</a>{authUser ? <><span className="account-email">{authUser.email}</span><span className={`role-badge ${authUser.role}`}>{authUser.role === "admin" ? "管理者" : "閲覧者"}</span><button className="signout-button" onClick={() => void signOut()}>ログアウト</button></> : <><span className="public-entry">どなたでも作成・提出できます</span><div ref={googleButtonRef} className="google-signin" aria-label="管理者ログイン" /></>}</div></header>
-      {authError && <div className="auth-notice"><b>ログインできませんでした</b><small>{authError}</small></div>}
+      <header className="topbar"><div className="crumbs">ホーム <span>／</span> 舞台配置</div><div className="account"><span className="public-entry">どなたでも作成・提出できます</span></div></header>
       <div className="content-wrap form-content">
         <section className="page-heading"><div><p className="section-kicker">STAGE LAYOUT / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第61回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {editingSubmissionId ? `申請 #${editingSubmissionId} を編集中` : saved ? "登録内容を保存しました" : "どなたでも入力・提出できます"}</div></section>
 
