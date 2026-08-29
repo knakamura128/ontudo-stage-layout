@@ -71,7 +71,7 @@ function valueOrNone(value?: string) { return value?.trim() || "なし"; }
 export default async function SubmissionDetail({ params }: { params: Promise<{ id: string }> }) {
   const user = await readSession((await headers()).get("cookie"));
   const { id } = await params;
-  if (!user || user.role !== "admin") return <main className="admin-gate"><section className="admin-gate-card"><h1>管理者専用です</h1><Link href="/admin" className="admin-primary-link">管理者ページへ戻る</Link></section></main>;
+  if (!user || user.role !== "admin") return <main className="admin-gate"><section className="admin-gate-card"><h1>管理者専用です</h1><p>管理者としてログインすると、申請詳細を確認できます。</p><a href="/admin?login=redirect" className="admin-primary-link">管理者ログインへ進む</a><a href="/" className="admin-secondary-link">舞台配置ページへ戻る</a></section></main>;
 
   const db = (env as { DB?: D1Database }).DB;
   const row = db ? await db.prepare("SELECT id, school_name, program_name, performer_total, status, payload, submitted_at FROM submissions WHERE id = ?").bind(Number(id)).first<Row>() : null;

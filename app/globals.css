@@ -148,6 +148,7 @@ button{cursor:pointer}
 .switch-line input:checked+span{background:var(--navy);border-color:var(--navy);position:relative}
 .switch-line input:checked+span:after{content:"✓";color:white;position:absolute;left:3px;top:-1px;font-size:12px}
 .switch-line small{color:#94a0a7}
+.switch-line.power-entry{min-height:48px;margin:12px 0;padding:10px 12px;border:1px solid #bcd5dc;border-radius:8px;background:#f4fafb;gap:11px;font-size:14px;font-weight:700;line-height:1.45}.switch-line.power-entry>span{flex:0 0 28px;width:28px;height:28px;border-radius:6px;border-color:#719aaa}.switch-line.power-entry input:checked+span:after{left:5px;top:-1px;font-size:22px;font-weight:800}.switch-line.power-entry small{display:block;margin-left:4px;font-size:10px;font-weight:400;line-height:1.45}@media(max-width:650px){.switch-line.power-entry{min-height:58px;padding:12px 13px;align-items:flex-start;font-size:14px}.switch-line.power-entry>span{margin-top:1px}.switch-line.power-entry small{margin:2px 0 0;font-size:10px}}
 .power-note{margin:6px 0 0;padding:7px 9px;background:#fff8e8;color:#866e3a;border-radius:4px;font-size:10px;line-height:1.5}
 .count-input{display:grid;grid-template-columns:1fr 24px 36px 24px auto;gap:5px;align-items:center;margin:8px 0;color:#566977;font-size:11px}
 .count-input button{height:23px;padding:0;border:1px solid #d4dcdf;border-radius:4px;background:#fff;color:#4f6475}
