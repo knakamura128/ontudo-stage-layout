@@ -76,6 +76,7 @@ export default function Home() {
   const [stepMessage, setStepMessage] = useState("");
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [onboardingPage, setOnboardingPage] = useState(0);
+  const [largeText, setLargeText] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/session")
@@ -87,6 +88,16 @@ export default function Home() {
   useEffect(() => {
     if (!window.localStorage.getItem("music-stage-onboarding-seen")) setOnboardingOpen(true);
   }, []);
+
+  useEffect(() => {
+    setLargeText(window.localStorage.getItem("music-stage-large-text") === "1");
+  }, []);
+
+  const toggleLargeText = () => setLargeText((enabled) => {
+    const next = !enabled;
+    window.localStorage.setItem("music-stage-large-text", next ? "1" : "0");
+    return next;
+  });
 
   const closeOnboarding = () => {
     window.localStorage.setItem("music-stage-onboarding-seen", "1");
@@ -393,7 +404,7 @@ export default function Home() {
     requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(targets[step])?.scrollIntoView({ behavior: "smooth", block: "start" })));
   };
 
-  return <main className="app-shell">
+  return <main className={`app-shell ${largeText ? "text-large" : ""}`}>
     <aside className="side-nav" aria-label="主なメニュー">
       <div className="brand"><div className="brand-mark">♪</div><div><p className="brand-eyebrow">令和8年度</p><p className="brand-name">音楽のつどい</p></div></div>
       <nav className="nav-list"><button className="nav-item is-active"><span className="nav-icon">⌘</span> 舞台配置</button><button className="nav-item" onClick={() => document.getElementById("organization")?.scrollIntoView({ behavior: "smooth" })}><span className="nav-icon">◇</span> 団体情報</button><button className="nav-item" onClick={() => document.getElementById("precheck")?.scrollIntoView({ behavior: "smooth" })}><span className="nav-icon">✓</span> 提出前チェック <span className={missingChecks.length ? "nav-dot" : ""} /></button><a className="nav-item admin-nav-link" href="/admin"><span className="nav-icon">⚙</span> 管理者ページ</a></nav>
@@ -401,7 +412,7 @@ export default function Home() {
     </aside>
 
     <section className="workspace">
-      <header className="topbar"><div className="crumbs">ホーム <span>／</span> 舞台配置</div><div className="account"><span className="public-entry">どなたでも作成・提出できます</span></div></header>
+      <header className="topbar"><div className="crumbs">ホーム <span>／</span> 舞台配置</div><div className="account"><button type="button" className="text-size-toggle" onClick={toggleLargeText} aria-pressed={largeText}>{largeText ? "文字：標準" : "文字：大きく"}</button><span className="public-entry">どなたでも作成・提出できます</span></div></header>
       <div className="content-wrap form-content">
         <section className="page-heading"><div><p className="section-kicker">STAGE LAYOUT / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第63回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {editingSubmissionId ? (saved ? `申請 #${editingSubmissionId} を保存しました` : `申請 #${editingSubmissionId} を編集中（変更は未保存）`) : saved ? "登録内容を保存しました" : "どなたでも入力・提出できます"}</div></section>
 
