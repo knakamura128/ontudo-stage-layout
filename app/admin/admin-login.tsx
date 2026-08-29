@@ -60,5 +60,5 @@ export default function AdminLogin() {
     return () => script.removeEventListener("load", renderButton);
   }, [redirectMode]);
 
-  return <div className="admin-login"><div ref={buttonRef} aria-label="Googleでログイン" />{redirectMode ? <><p className="admin-login-guide">Googleのログイン画面へ移動します。完了後、自動的にこのページへ戻ります。</p><a className="admin-login-fallback" href="/admin">通常のログインに戻る</a></> : <a className="admin-login-fallback" href="/admin?login=redirect">ログイン画面が白い場合はこちら</a>}{error && <p>{error}</p>}</div>;
+  return <div className="admin-login"><div ref={buttonRef} aria-label="Googleでログイン" />{redirectMode ? <><p className="admin-login-guide">Googleのログイン画面へ移動します。完了後、自動的にこのページへ戻ります。</p><a className="admin-login-fallback" href="/admin">通常のログインに戻る</a></> : <a className="admin-login-fallback" href="/admin?login=redirect">ログイン画面が白い場合はこちら</a>}<p className="admin-login-browser-note">LINEアプリ内ブラウザではGoogleのログイン画面が白くなる場合があります。Chrome・Edge・Safariなどの通常ブラウザでURLを開いてログインしてください。</p>{error && <p>{error}</p>}</div>;
 }
