@@ -418,8 +418,8 @@ export default function Home() {
 
         {currentStep === 3 && <><section className="equipment-workspace" id="stage-equipment">
           <div className="equipment-heading"><div><p className="mini-label">STAGE EQUIPMENT</p><h2>舞台備品を配置</h2><p>必要な備品を押すと、上の配置図へ追加されます。追加された備品は赤枠で選択され、ドラッグで移動できます。</p></div></div>
-          <label className={`switch-line power-entry ${selectedObject ? "" : "is-disabled"}`} aria-disabled={!selectedObject}><input type="checkbox" disabled={!selectedObject} checked={selectedObject?.power ?? false} onChange={(e) => setSelectedObjectPower(e.target.checked)} /><span />この備品で電源を使用する <small>{selectedObject ? `選択中：${selectedObject.label}　◆マークが配置図と資料に付きます` : "先に配置図上の備品をタップして選択してください。その他の備品・楽器を追加した直後にも設定できます。"}</small></label>
           <div className="object-palette"><label className="custom-equipment"><span>その他の備品・楽器</span><input value={customEquipmentName} onChange={(event) => setCustomEquipmentName(event.target.value)} placeholder="例：木琴、和太鼓" /><button type="button" disabled={!customEquipmentName.trim()} onClick={() => addObject(customEquipmentName.trim(), "●", "instrument")}>配置図に追加</button><small>必要な数だけ、同じ名称でも何度でも追加できます</small></label></div>
+          <label className={`switch-line power-entry ${selectedObject ? "" : "is-disabled"}`} aria-disabled={!selectedObject}><input type="checkbox" disabled={!selectedObject} checked={selectedObject?.power ?? false} onChange={(e) => setSelectedObjectPower(e.target.checked)} /><span />この備品で電源を使用する <small>{selectedObject ? `選択中：${selectedObject.label}　◆マークが配置図と資料に付きます` : "先に配置図上の備品をタップして選択してください。その他の備品・楽器を追加した直後にも設定できます。"}</small></label>
         </section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(2)}>← 配置図へ戻る</button><button onClick={goToNextStep}>共通申請へ進む →</button></div></>}
 
         {currentStep === 4 && <><section className="application-card" id="common-application">
