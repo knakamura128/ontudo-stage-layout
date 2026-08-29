@@ -71,6 +71,7 @@ export default function Home() {
   const [authUser, setAuthUser] = useState<SignedInUser | null>(null);
   const [submissionMessage, setSubmissionMessage] = useState("");
   const [submitModal, setSubmitModal] = useState<"submitting" | "success" | null>(null);
+  const [creatingPdf, setCreatingPdf] = useState(false);
   const [editingSubmissionId, setEditingSubmissionId] = useState<number | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [stepMessage, setStepMessage] = useState("");
@@ -153,9 +154,32 @@ export default function Home() {
       const response = await fetch("/api/submissions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schoolName, programName: separatePrograms ? programs[0] : "配置図共通", performerTotal: primaryPerformerTotal, submit, submissionKey, submissionId: editingSubmissionId ?? undefined, payload: { applicantName, layouts, programs, separatePrograms, programPerformers, counts, carDelivery, deliveryDate, soundVideo, soundCue, media, usePower, usePiano, useChildPianoBench, bringChildPianoBench, loading, poweredLoading, notes } }) });
       const data = await response.json() as { id?: number; error?: string };
       if (!response.ok) throw new Error(data.error || "保存できませんでした。");
-      setSaved(true); setSubmissionMessage(submit ? (editingSubmissionId ? "修正内容を提出済みに更新しました。以前の内容は管理者ページの更新履歴に残ります。" : "提出しました。学校担当者側でPDFを保存する必要はありません。管理者が設営資料をPDFで保存・印刷します。") : "下書きを保存しました。");
+      setSaved(true); setSubmissionMessage(submit ? (editingSubmissionId ? "修正内容を提出済みに更新しました。以前の内容は管理者ページの更新履歴に残ります。PDFをダウンロードして控えを保存できます。" : "提出しました。PDFをダウンロードして控えを保存できます。管理者も設営資料として確認・印刷します。") : "下書きを保存しました。");
       if (submit) setSubmitModal("success");
     } catch (error) { if (submit) setSubmitModal(null); setSubmissionMessage(error instanceof Error ? error.message : "保存できませんでした。"); }
+  };
+
+  const downloadSubmissionPdf = async () => {
+    const target = document.querySelector<HTMLElement>(".submission-pdf");
+    if (!target || creatingPdf) return;
+    setCreatingPdf(true);
+    setSubmissionMessage("PDFを作成中です…");
+    target.classList.add("pdf-rendering");
+    try {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
+      const canvas = await html2canvas(target, { backgroundColor: "#fff", scale: 2 });
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.94), "JPEG", 0, 0, 210, 297, undefined, "FAST");
+      const filename = (schoolName.trim() || "提出内容").replace(/[\\/:*?\"<>|]/g, "_");
+      pdf.save(`音楽のつどい_舞台配置_${filename}.pdf`);
+      setSubmissionMessage("PDFをダウンロードしました。スマホでは、共有メニューから「ファイルに保存」も選べます。");
+    } catch (error) {
+      setSubmissionMessage(error instanceof Error ? error.message : "PDFを作成できませんでした。");
+    } finally {
+      target.classList.remove("pdf-rendering");
+      setCreatingPdf(false);
+    }
   };
 
   const layoutKey = separatePrograms ? activeProgram : 0;
@@ -476,7 +500,7 @@ export default function Home() {
 
         <section className="notes-card"><div><p className="mini-label">REQUESTS FOR SETUP STAFF</p><h2>その他担当者への要望</h2><p>当日の動きや配慮が必要なことがあれば、任意で入力してください。</p></div><textarea value={notes} onChange={(event) => { setNotes(event.target.value); setSaved(false); }} placeholder={"例）舞台へ入るタイミングを、ピアノの音をきっかけにしたいです。\n例）車椅子の出演者がいます。"} /></section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(3)}>← 舞台備品へ戻る</button><button onClick={goToNextStep}>確認・提出へ進む →</button></div></>}
         {currentStep === 5 && <><section className="precheck-card" id="precheck"><div><p className="mini-label">PRE-SUBMISSION CHECK</p><h2>提出前チェック</h2><p>学校名・出演人数（配置を変える場合は演目名）の入力有無を確認します。学校名を変更しても入力済みなら点灯します。申請者氏名は連絡用の任意項目です。</p></div><ul>{submissionChecks.map((item) => <li key={item.label} className={item.ok ? "is-ok" : ""}>{item.ok ? "✓" : "!"} {item.label}<span>{item.ok ? "入力済み" : "未入力"}</span></li>)}</ul></section>
-        <section className="bottom-card" id="submit"><div><p className="mini-label">SUBMIT</p><h2>この内容で舞台配置を登録しますか？</h2><p>{submissionMessage || "内容を確認して、提出してください。PDFの保存・印刷は、提出後に管理者が行います。"}</p></div><div className="submit-actions"><button className="pdf-button" onClick={() => void saveRegistration(false)} disabled={submitModal === "submitting"}>下書きを保存</button><button className={`submit-button ${saved ? "is-done" : ""}`} onClick={() => void saveRegistration(true)} disabled={submitModal === "submitting"} aria-busy={submitModal === "submitting"}>{submitModal === "submitting" ? "提出中…" : saved ? "✓　提出済み" : "舞台配置を提出する　→"}</button></div></section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(4)}>← 共通申請へ戻る</button></div></>}
+        <section className="bottom-card" id="submit"><div><p className="mini-label">SUBMIT</p><h2>この内容で舞台配置を登録しますか？</h2><p>{submissionMessage || "内容を確認して、提出してください。提出後はPDFをダウンロードして控えを保存できます。"}</p></div><div className="submit-actions"><button className="pdf-button" onClick={() => void saveRegistration(false)} disabled={submitModal === "submitting"}>下書きを保存</button><button className="pdf-download-button" onClick={() => void downloadSubmissionPdf()} disabled={creatingPdf || submitModal === "submitting"}>{creatingPdf ? "PDFを作成中…" : "PDFをダウンロード"}</button><button className={`submit-button ${saved ? "is-done" : ""}`} onClick={() => void saveRegistration(true)} disabled={submitModal === "submitting"} aria-busy={submitModal === "submitting"}>{submitModal === "submitting" ? "提出中…" : saved ? "✓　提出済み" : "舞台配置を提出する　→"}</button></div></section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(4)}>← 共通申請へ戻る</button></div></>}
         <section className="submission-pdf" aria-hidden="true">
           <header><p>令和8年度　第63回 音楽のつどい</p><h1>舞台配置・使用機器等 提出資料</h1><small>作成日　{new Intl.DateTimeFormat("ja-JP", { dateStyle: "long", timeZone: "Asia/Tokyo" }).format(new Date())}</small></header>
           <div className="pdf-meta"><div><span>学校名</span><b>{schoolName || "未入力"}</b></div><div><span>申請者</span><b>{applicantName || "未入力"}</b></div><div><span>出演人数</span><b>{(separatePrograms ? programPerformers[activeProgram] : performerTotal) || placedPlayerCount}名</b></div><div><span>配置</span><b>{separatePrograms ? programs[activeProgram] || "未入力" : "共通配置"}</b></div></div>
@@ -489,7 +513,7 @@ export default function Home() {
       </div>
     </section>
     {onboardingOpen && <OnboardingGuide page={onboardingPage} onNext={() => onboardingPage < 2 ? setOnboardingPage((now) => now + 1) : closeOnboarding()} onSkip={closeOnboarding} />}
-    {submitModal && <div className="submit-modal-backdrop" role="presentation"><section className="submit-modal" role="dialog" aria-modal="true" aria-labelledby="submit-modal-title"><div className={`submit-modal-icon ${submitModal}`}>{submitModal === "success" ? "✓" : "…"}</div><p className="mini-label">{submitModal === "success" ? "SUBMISSION COMPLETE" : "SUBMITTING"}</p><h2 id="submit-modal-title">{submitModal === "success" ? "舞台配置を提出しました" : "提出内容を送信しています"}</h2><p>{submitModal === "success" ? <>{schoolName || "学校"}の提出内容を受け付けました。管理者ページで設営資料として確認・PDF作成できます。学校担当者の操作はこれで完了です。</> : "画面を閉じずに、そのままお待ちください。"}</p>{submitModal === "success" && <button onClick={() => setSubmitModal(null)} autoFocus>確認しました</button>}</section></div>}
+    {submitModal && <div className="submit-modal-backdrop" role="presentation"><section className="submit-modal" role="dialog" aria-modal="true" aria-labelledby="submit-modal-title"><div className={`submit-modal-icon ${submitModal}`}>{submitModal === "success" ? "✓" : "…"}</div><p className="mini-label">{submitModal === "success" ? "SUBMISSION COMPLETE" : "SUBMITTING"}</p><h2 id="submit-modal-title">{submitModal === "success" ? "舞台配置を提出しました" : "提出内容を送信しています"}</h2><p>{submitModal === "success" ? <>{schoolName || "学校"}の提出内容を受け付けました。PDFをダウンロードして控えを保存できます。管理者も設営資料として確認・印刷します。</> : "画面を閉じずに、そのままお待ちください。"}</p>{submitModal === "success" && <div className="submit-modal-actions"><button className="pdf-download-button" onClick={() => void downloadSubmissionPdf()} disabled={creatingPdf}>{creatingPdf ? "PDFを作成中…" : "PDFをダウンロード"}</button><button onClick={() => setSubmitModal(null)} autoFocus>確認しました</button></div>}</section></div>}
   </main>;
 }
 
