@@ -150,8 +150,16 @@ export default function Home() {
   const autoPlacement = activeLayout.autoPlacement ?? "riser";
   const showPerformers = activeLayout.showPerformers !== false;
   const objects = activeLayout.objects;
+  const selectedObject = selectedId === null ? undefined : objects.find((item) => item.id === selectedId);
   const updateLayoutAt = (targetLayoutKey: number, updater: (layout: ProgramLayout) => ProgramLayout) => setLayouts((now) => ({ ...now, [targetLayoutKey]: updater(now[targetLayoutKey]) }));
   const updateLayout = (updater: (layout: ProgramLayout) => ProgramLayout) => updateLayoutAt(layoutKey, updater);
+  const setSelectedObjectPower = (power: boolean) => {
+    if (selectedId === null) return;
+    const hasPowerInOtherLayouts = Object.entries(layouts).some(([key, layout]) => Number(key) !== layoutKey && layout.objects.some((item) => item.power));
+    setUsePower(hasPowerInOtherLayouts || power || objects.some((item) => item.id !== selectedId && item.power));
+    updateLayout((now) => ({ ...now, objects: now.objects.map((item) => item.id === selectedId ? { ...item, power } : item) }));
+    setSaved(false);
+  };
 
   const players = playerSlots;
   const placedPlayerCount = players.filter((_, index) => Boolean(activeLayout.playerLabels[index])).length;
@@ -248,6 +256,10 @@ export default function Home() {
   };
   const removeObject = (id: number) => {
     const removed = objects.find((item) => item.id === id);
+    if (removed?.power) {
+      const hasPowerInOtherLayouts = Object.entries(layouts).some(([key, layout]) => Number(key) !== layoutKey && layout.objects.some((item) => item.power));
+      setUsePower(hasPowerInOtherLayouts || objects.some((item) => item.id !== id && item.power));
+    }
     updateLayout((now) => ({ ...now, objects: now.objects.filter((item) => item.id !== id) }));
     if (removed?.label === "マイク" || removed?.label === "ワイヤレスマイク") setCounts((now) => ({ ...now, microphones: Math.max(0, now.microphones - 1) }));
     if (removed?.label === "マイクスタンド") setCounts((now) => ({ ...now, micStands: Math.max(0, now.micStands - 1) }));
@@ -394,7 +406,7 @@ export default function Home() {
             <div className="stage-measurements" aria-label="舞台寸法"><span><b>後方ひな壇</b> 横 12.6m × 縦 1.2m</span><span><b>前方ひな壇</b> 横 10.8m × 縦 0.9m</span><span><b>前方スペース</b> ひな壇前方から舞台袖まで 5.0m + 1.2m</span></div>
             {selectedPlayerIndices.length > 1 && <div className="object-editor performer-editor-selected multi-performer-editor" aria-live="polite"><b>{showPerformers ? `出演者 ${selectedPlayerIndices.length}名` : `椅子 ${selectedPlayerIndices.length}脚`}を選択中</b><small>選択した{showPerformers ? "出演者" : "椅子"}を、どれか1つをドラッグしてまとめて移動できます。</small><button className="delete-player" onClick={clearPlayerSelection}>選択解除</button></div>}
             {selectedPlayerIndex !== null && <div className="object-editor performer-editor-selected" aria-live="polite"><b>{showPerformers ? "出演者" : "椅子"}を選択中</b><small>{showPerformers ? "配置をドラッグで調整できます。削除すると出演人数も1名減ります。" : "椅子をドラッグで調整できます。出演人数は変わりません。"}</small>{showPerformers ? <button className="delete-player" onClick={() => removePlayer(selectedPlayerIndex)}>削除</button> : <button className="delete-player" onClick={clearPlayerSelection}>選択解除</button>}</div>}
-            {selectedId !== null && <div className="object-editor"><b>選択中の配置物</b><span>{objects.find((item) => item.id === selectedId)?.icon} {objects.find((item) => item.id === selectedId)?.label}</span><label><input type="checkbox" checked={objects.find((item) => item.id === selectedId)?.power ?? false} onChange={(e) => { updateLayout((now) => ({ ...now, objects: now.objects.map((item) => item.id === selectedId ? { ...item, power: e.target.checked } : item) })); if (e.target.checked) setUsePower(true); setSaved(false); }} />電源を使用</label><button onClick={() => removeObject(selectedId)}>削除</button></div>}
+            {selectedObject && <div className="object-editor"><b>選択中の配置物</b><span>{selectedObject.icon} {selectedObject.label}</span><label><input type="checkbox" checked={selectedObject.power} onChange={(e) => setSelectedObjectPower(e.target.checked)} />この備品で電源を使用</label><button onClick={() => removeObject(selectedObject.id)}>削除</button></div>}
           </section>
 
           <section className="control-panel comprehensive-panel">
@@ -406,7 +418,7 @@ export default function Home() {
 
         {currentStep === 3 && <><section className="equipment-workspace" id="stage-equipment">
           <div className="equipment-heading"><div><p className="mini-label">STAGE EQUIPMENT</p><h2>舞台備品を配置</h2><p>必要な備品を押すと、上の配置図へ追加されます。追加された備品は赤枠で選択され、ドラッグで移動できます。</p></div></div>
-          <label className="switch-line power-entry"><input type="checkbox" checked={usePower} onChange={(e) => { setUsePower(e.target.checked); setSaved(false); }} /><span />電源（コンセント）を使用する <small>配置した備品を選び、「電源を使用」をチェックしてください</small></label>
+          <label className={`switch-line power-entry ${selectedObject ? "" : "is-disabled"}`} aria-disabled={!selectedObject}><input type="checkbox" disabled={!selectedObject} checked={selectedObject?.power ?? false} onChange={(e) => setSelectedObjectPower(e.target.checked)} /><span />この備品で電源を使用する <small>{selectedObject ? `選択中：${selectedObject.label}　◆マークが配置図と資料に付きます` : "先に配置図上の備品をタップして選択してください。その他の備品・楽器を追加した直後にも設定できます。"}</small></label>
           <div className="object-palette"><label className="custom-equipment"><span>その他の備品・楽器</span><input value={customEquipmentName} onChange={(event) => setCustomEquipmentName(event.target.value)} placeholder="例：木琴、和太鼓" /><button type="button" disabled={!customEquipmentName.trim()} onClick={() => addObject(customEquipmentName.trim(), "●", "instrument")}>配置図に追加</button><small>必要な数だけ、同じ名称でも何度でも追加できます</small></label></div>
         </section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(2)}>← 配置図へ戻る</button><button onClick={goToNextStep}>共通申請へ進む →</button></div></>}
 
