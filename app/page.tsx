@@ -17,9 +17,6 @@ const normalizedSchoolName = (value: string) => value.replace(/[\s　]/g, "").re
 const playerSlots = Array.from({ length: MAX_PERFORMERS }, (_, index) => ({ index }));
 const blankPlayerLabels = () => Object.fromEntries(playerSlots.map(({ index }) => [index, ""]));
 
-const palette = [
-  { label: "譜面台", icon: "🎼", kind: "stand" as const },
-];
 const initialPlayerPositions = (() => {
   const positions: Record<number, StagePoint> = {};
   const line = (start: number, count: number, left: number, right: number, top: number) => Array.from({ length: count }, (_, offset) => { positions[start + offset] = { left: left + (right - left) * (offset / Math.max(1, count - 1)), top }; });
@@ -64,7 +61,7 @@ export default function Home() {
   const [selectedPlayerIndex, setSelectedPlayerIndex] = useState<number | null>(null);
   const [selectedPlayerIndices, setSelectedPlayerIndices] = useState<number[]>([]);
   const [multiSelectMode, setMultiSelectMode] = useState(false);
-  const [counts, setCounts] = useState({ microphones: 0, micStands: 0, podiums: 0, conductorStands: 0, playerChairs: 0, foldingChairs: 0 });
+  const [counts, setCounts] = useState({ microphones: 0, micStands: 0, podiums: 0, conductorStands: 0, musicStands: 0, playerChairs: 0, foldingChairs: 0 });
   const [customEquipmentName, setCustomEquipmentName] = useState("");
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
@@ -114,7 +111,7 @@ export default function Home() {
       const savedLayout = saved.layouts?.[savedProgramIndex] ?? saved.layouts?.[0];
       if (saved.separatePrograms && saved.layouts) setLayouts((now) => ({ ...now, ...saved.layouts }));
       else if (savedLayout) setLayouts((now) => ({ ...now, 0: savedLayout }));
-      setCounts({ microphones: Number(saved.counts?.microphones) || 0, micStands: Number(saved.counts?.micStands) || 0, podiums: Number(saved.counts?.podiums) || 0, conductorStands: Number(saved.counts?.conductorStands) || 0, playerChairs: Number(saved.counts?.playerChairs) || 0, foldingChairs: Number(saved.counts?.foldingChairs) || 0 });
+      setCounts({ microphones: Number(saved.counts?.microphones) || 0, micStands: Number(saved.counts?.micStands) || 0, podiums: Number(saved.counts?.podiums) || 0, conductorStands: Number(saved.counts?.conductorStands) || 0, musicStands: Number(saved.counts?.musicStands) || 0, playerChairs: Number(saved.counts?.playerChairs) || 0, foldingChairs: Number(saved.counts?.foldingChairs) || 0 });
       setCarDelivery(saved.carDelivery === "有" ? "有" : "無"); setDeliveryDate(saved.deliveryDate ?? ""); setSoundVideo(saved.soundVideo === "あり" ? "あり" : "なし"); setSoundCue(saved.soundCue === "あり" ? "あり" : "なし"); setMedia(Array.isArray(saved.media) ? saved.media : []); setUsePower(Boolean(saved.usePower)); setUsePiano(Boolean(saved.usePiano)); setUseChildPianoBench(Boolean(saved.useChildPianoBench)); setBringChildPianoBench(Boolean(saved.bringChildPianoBench)); setLoading(Array.isArray(saved.loading) ? saved.loading : []); setPoweredLoading(Array.isArray(saved.poweredLoading) ? saved.poweredLoading : []); setNotes(saved.notes ?? "");
       setActiveProgram(0); setEditingSubmissionId(submission.id); setSaved(false); setSubmissionMessage("申請内容を読み込みました。修正後に保存または再提出してください。");
     }).catch((error: Error) => { loadedEditIdRef.current = null; setSubmissionMessage(error.message || "申請内容を読み込めませんでした。"); });
@@ -198,12 +195,13 @@ export default function Home() {
     setCounts((now) => ({ ...now, playerChairs: playerChairCount, foldingChairs: foldingChairCount }));
     setSaved(false);
   };
-  const syncCountedObjects = (label: "ワイヤレスマイク" | "マイクスタンド" | "指揮台" | "指揮者譜面台", icon: string, kind: StageObject["kind"], value: number) => {
+  const syncCountedObjects = (label: "ワイヤレスマイク" | "マイクスタンド" | "指揮台" | "指揮者譜面台" | "譜面台", icon: string, kind: StageObject["kind"], value: number) => {
     const settings = {
       "ワイヤレスマイク": { maximum: 5, countKey: "microphones" as const, positions: [{ x: 46, y: 62 }, { x: 55, y: 62 }, { x: 64, y: 62 }, { x: 50, y: 71 }, { x: 59, y: 71 }] },
       "マイクスタンド": { maximum: 5, countKey: "micStands" as const, positions: [{ x: 46, y: 62 }, { x: 55, y: 62 }, { x: 64, y: 62 }, { x: 50, y: 71 }, { x: 59, y: 71 }] },
       "指揮台": { maximum: 3, countKey: "podiums" as const, positions: [{ x: 47, y: 75 }, { x: 53, y: 75 }, { x: 50, y: 82 }] },
       "指揮者譜面台": { maximum: 1, countKey: "conductorStands" as const, positions: [{ x: 59, y: 74 }] },
+      "譜面台": { maximum: 10, countKey: "musicStands" as const, positions: [{ x: 36, y: 62 }, { x: 44, y: 62 }, { x: 52, y: 62 }, { x: 60, y: 62 }, { x: 68, y: 62 }, { x: 40, y: 70 }, { x: 48, y: 70 }, { x: 56, y: 70 }, { x: 64, y: 70 }, { x: 72, y: 70 }] },
     }[label];
     const maximum = settings.maximum;
     const targetCount = Math.min(maximum, Math.max(0, value));
@@ -241,7 +239,7 @@ export default function Home() {
   const clearStageLayout = () => {
     if (!window.confirm("この配置図の出演者・備品をすべてクリアしますか？")) return;
     updateLayout((now) => ({ ...now, fanLayout: false, objects: [], playerPositions: {}, playerLabels: blankPlayerLabels(), playerSeats: {} }));
-    setCounts({ microphones: 0, micStands: 0, podiums: 0, conductorStands: 0, playerChairs: 0, foldingChairs: 0 });
+    setCounts({ microphones: 0, micStands: 0, podiums: 0, conductorStands: 0, musicStands: 0, playerChairs: 0, foldingChairs: 0 });
     if (separatePrograms) setProgramPerformers((now) => now.map((count, index) => index === layoutKey ? 0 : count));
     else setPerformerTotal(0);
     setSelectedId(null);
@@ -255,6 +253,7 @@ export default function Home() {
     if (removed?.label === "マイクスタンド") setCounts((now) => ({ ...now, micStands: Math.max(0, now.micStands - 1) }));
     if (removed?.label === "指揮台") setCounts((now) => ({ ...now, podiums: Math.max(0, now.podiums - 1) }));
     if (removed?.label === "指揮者譜面台") setCounts((now) => ({ ...now, conductorStands: Math.max(0, now.conductorStands - 1) }));
+    if (removed?.label === "譜面台") setCounts((now) => ({ ...now, musicStands: Math.max(0, now.musicStands - 1) }));
     setSelectedId(null);
     setSaved(false);
   };
@@ -401,14 +400,14 @@ export default function Home() {
           <section className="control-panel comprehensive-panel">
             <div className="panel-head"><div><p className="mini-label">EQUIPMENT & DELIVERY</p><h2>申請内容</h2></div><span className="form-no">様式 1104</span></div>
             <section className="form-section"><h3>利用備品</h3><label className="switch-line"><input type="checkbox" checked={usePiano} onChange={(e) => { setUsePiano(e.target.checked); setSaved(false); }} /><span />ピアノを使用する <small>（位置固定）</small></label><label className="switch-line"><input type="checkbox" checked={useChildPianoBench} onChange={(e) => { setUseChildPianoBench(e.target.checked); if (!e.target.checked) setBringChildPianoBench(false); setSaved(false); }} /><span />子ども用ピアノ台を使用する</label><label className="switch-line"><input type="checkbox" checked={bringChildPianoBench} disabled={!useChildPianoBench} onChange={(e) => { setBringChildPianoBench(e.target.checked); setSaved(false); }} /><span />子ども用ピアノ台を持ち込む</label></section>
-            <section className="form-section count-section"><h3>出演者・舞台備品の数量</h3><div className="quantity-tree"><div className="quantity-total"><span>出演人数</span><strong>{currentPerformerTotal}名</strong><small>配置図と連動</small></div><div className="quantity-tree-rows"><Count label="出演者" suffix={`名（最大${MAX_PERFORMERS}）`} value={currentPerformerTotal} max={MAX_PERFORMERS} onChange={changePerformerTotal} /><Count label="出演者椅子" suffix={`脚（最大60・出演者 ${placedPlayerCount}名まで）`} value={counts.playerChairs} max={Math.min(60, placedPlayerCount)} onChange={(v) => setSeatCounts(v, counts.foldingChairs)} /><Count label="折りたたみ椅子" suffix={`脚（最大50・残り ${Math.max(0, placedPlayerCount - counts.playerChairs)}名まで）`} value={counts.foldingChairs} max={Math.min(50, Math.max(0, placedPlayerCount - counts.playerChairs))} onChange={(v) => setSeatCounts(counts.playerChairs, v)} /></div></div><p className="move-help">出演者を増減すると、配置図の出演者も自動で増減します。椅子の数は出演者に反映され、舞台備品の数は配置図に追加されます。</p><Count label="ワイヤレスマイク" suffix="本（最大5・配置図に追加）" value={counts.microphones} max={5} onChange={(v) => syncCountedObjects("ワイヤレスマイク", "🎤", "instrument", v)} /><Count label="マイクスタンド" suffix="本（最大5・配置図に追加）" value={counts.micStands} max={5} onChange={(v) => syncCountedObjects("マイクスタンド", "🎙️", "stand", v)} /><Count label="指揮台" suffix="台（最大3・配置図に追加）" value={counts.podiums} max={3} onChange={(v) => syncCountedObjects("指揮台", "▣", "stand", v)} /><Count label="指揮者用譜面台" suffix="台（最大1・配置図に追加）" value={counts.conductorStands} max={1} onChange={(v) => syncCountedObjects("指揮者譜面台", "🎼", "stand", v)} /><p className="equipment-limit-note">譜面台の準備可能数は確認中です。必要な分だけ「舞台備品を配置」から追加してください。</p></section>
+            <section className="form-section count-section"><h3>出演者・舞台備品の数量</h3><div className="quantity-tree"><div className="quantity-total"><span>出演人数</span><strong>{currentPerformerTotal}名</strong><small>配置図と連動</small></div><div className="quantity-tree-rows"><Count label="出演者" suffix={`名（最大${MAX_PERFORMERS}）`} value={currentPerformerTotal} max={MAX_PERFORMERS} onChange={changePerformerTotal} /><Count label="出演者椅子" suffix={`脚（最大60・出演者 ${placedPlayerCount}名まで）`} value={counts.playerChairs} max={Math.min(60, placedPlayerCount)} onChange={(v) => setSeatCounts(v, counts.foldingChairs)} /><Count label="折りたたみ椅子" suffix={`脚（最大50・残り ${Math.max(0, placedPlayerCount - counts.playerChairs)}名まで）`} value={counts.foldingChairs} max={Math.min(50, Math.max(0, placedPlayerCount - counts.playerChairs))} onChange={(v) => setSeatCounts(counts.playerChairs, v)} /></div></div><p className="move-help">出演者を増減すると、配置図の出演者も自動で増減します。椅子の数は出演者に反映され、舞台備品の数は配置図に追加されます。</p><Count label="ワイヤレスマイク" suffix="本（最大5・配置図に追加）" value={counts.microphones} max={5} onChange={(v) => syncCountedObjects("ワイヤレスマイク", "🎤", "instrument", v)} /><Count label="マイクスタンド" suffix="本（最大5・配置図に追加）" value={counts.micStands} max={5} onChange={(v) => syncCountedObjects("マイクスタンド", "🎙️", "stand", v)} /><Count label="指揮台" suffix="台（最大3・配置図に追加）" value={counts.podiums} max={3} onChange={(v) => syncCountedObjects("指揮台", "▣", "stand", v)} /><Count label="指揮者用譜面台" suffix="台（最大1・配置図に追加）" value={counts.conductorStands} max={1} onChange={(v) => syncCountedObjects("指揮者譜面台", "🎼", "stand", v)} /><Count label="譜面台" suffix="台（最大10・配置図に追加）" value={counts.musicStands} max={10} onChange={(v) => syncCountedObjects("譜面台", "🎼", "stand", v)} /></section>
           </section>
         </div>{currentStep === 2 && <div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(1)}>← 基本情報へ戻る</button><button onClick={goToNextStep}>舞台備品へ進む →</button></div>}</>}
 
         {currentStep === 3 && <><section className="equipment-workspace" id="stage-equipment">
           <div className="equipment-heading"><div><p className="mini-label">STAGE EQUIPMENT</p><h2>舞台備品を配置</h2><p>必要な備品を押すと、上の配置図へ追加されます。追加された備品は赤枠で選択され、ドラッグで移動できます。</p></div></div>
           <label className="switch-line power-entry"><input type="checkbox" checked={usePower} onChange={(e) => { setUsePower(e.target.checked); setSaved(false); }} /><span />電源（コンセント）を使用する <small>配置した備品を選び、「電源を使用」をチェックしてください</small></label>
-          <div className="object-palette"><div className="palette-label">舞台備品</div>{palette.map((item) => <button key={item.label} onClick={() => addObject(item.label, item.icon, item.kind)}><span className="tool-icon">{item.icon}</span><span>{item.label}</span><small>舞台へ追加</small></button>)}<label className="custom-equipment"><span>その他の備品・楽器</span><input value={customEquipmentName} onChange={(event) => setCustomEquipmentName(event.target.value)} placeholder="例：木琴、和太鼓" /><button type="button" disabled={!customEquipmentName.trim()} onClick={() => addObject(customEquipmentName.trim(), "●", "instrument")}>配置図に追加</button><small>必要な数だけ、同じ名称でも何度でも追加できます</small></label></div>
+          <div className="object-palette"><label className="custom-equipment"><span>その他の備品・楽器</span><input value={customEquipmentName} onChange={(event) => setCustomEquipmentName(event.target.value)} placeholder="例：木琴、和太鼓" /><button type="button" disabled={!customEquipmentName.trim()} onClick={() => addObject(customEquipmentName.trim(), "●", "instrument")}>配置図に追加</button><small>必要な数だけ、同じ名称でも何度でも追加できます</small></label></div>
         </section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(2)}>← 配置図へ戻る</button><button onClick={goToNextStep}>共通申請へ進む →</button></div></>}
 
         {currentStep === 4 && <><section className="application-card" id="common-application">
@@ -428,7 +427,7 @@ export default function Home() {
           <section className="pdf-section"><h2>舞台配置図（幅 {FIXED_STAGE_SIZE.width}m × 奥行 {FIXED_STAGE_SIZE.depth}m）</h2><div className="pdf-stage"><div className="pdf-piano">PIANO</div><div className="pdf-riser pdf-riser-top">ひな壇 2段目　椅子14</div><div className="pdf-riser pdf-riser-low">ひな壇 1段目　椅子16</div>
             {showPerformers ? players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "player"; return label ? <span key={player.index} className={`pdf-player ${seat}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }}>{label}</span> : null; }) : <><span className="pdf-performers-skipped">出演者の配置なし（{currentPerformerTotal}名）</span>{players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "none"; return label && seat !== "none" ? <span key={player.index} className={`pdf-player chair-only ${seat}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }}>{seat === "player" ? "椅子" : "折り畳"}</span> : null; })}</>}
             {objects.map((item) => <span key={item.id} className={`pdf-object ${item.kind}`} style={{ left: `${item.x}%`, top: `${item.y}%` }}>{item.icon} {item.label}{item.power ? " ◆" : ""}</span>)}<div className="pdf-audience">客　席</div></div><div className="pdf-stage-measurements">後方ひな壇：横12.6m × 縦1.2m　／　前方ひな壇：横10.8m × 縦0.9m　／　ひな壇前方から舞台袖まで：5.0m + 1.2m</div></section>
-          <div className="pdf-info-grid"><section><h2>利用備品・数量</h2><dl><div><dt>ピアノ</dt><dd>{usePiano ? "使用" : "不使用"}</dd></div><div><dt>ワイヤレスマイク</dt><dd>{counts.microphones}本</dd></div><div><dt>マイクスタンド</dt><dd>{counts.micStands}本</dd></div><div><dt>指揮台</dt><dd>{counts.podiums}台</dd></div><div><dt>指揮者用譜面台</dt><dd>{counts.conductorStands}台</dd></div><div><dt>出演者椅子</dt><dd>{counts.playerChairs}脚</dd></div><div><dt>折り畳み椅子</dt><dd>{counts.foldingChairs}脚</dd></div><div><dt>電源（コンセント）</dt><dd>{usePower ? "使用" : "不使用"}</dd></div></dl></section><section><h2>搬入・音響</h2><dl><div><dt>車での搬入</dt><dd>{carDelivery}</dd></div><div><dt>搬入希望日</dt><dd>{deliveryDate}</dd></div><div><dt>搬入物</dt><dd>{loading.join("、") || "なし"}</dd></div><div><dt>音響・映像備品</dt><dd>{soundVideo}</dd></div><div><dt>音出し指示</dt><dd>{soundCue}</dd></div></dl></section></div>
+          <div className="pdf-info-grid"><section><h2>利用備品・数量</h2><dl><div><dt>ピアノ</dt><dd>{usePiano ? "使用" : "不使用"}</dd></div><div><dt>ワイヤレスマイク</dt><dd>{counts.microphones}本</dd></div><div><dt>マイクスタンド</dt><dd>{counts.micStands}本</dd></div><div><dt>指揮台</dt><dd>{counts.podiums}台</dd></div><div><dt>指揮者用譜面台</dt><dd>{counts.conductorStands}台</dd></div><div><dt>譜面台</dt><dd>{counts.musicStands}台</dd></div><div><dt>出演者椅子</dt><dd>{counts.playerChairs}脚</dd></div><div><dt>折り畳み椅子</dt><dd>{counts.foldingChairs}脚</dd></div><div><dt>電源（コンセント）</dt><dd>{usePower ? "使用" : "不使用"}</dd></div></dl></section><section><h2>搬入・音響</h2><dl><div><dt>車での搬入</dt><dd>{carDelivery}</dd></div><div><dt>搬入希望日</dt><dd>{deliveryDate}</dd></div><div><dt>搬入物</dt><dd>{loading.join("、") || "なし"}</dd></div><div><dt>音響・映像備品</dt><dd>{soundVideo}</dd></div><div><dt>音出し指示</dt><dd>{soundCue}</dd></div></dl></section></div>
           <section className="pdf-notes"><h2>その他担当者への要望</h2><p>{notes || "なし"}</p></section><footer>教育委員会提出用／当日設営用資料</footer>
         </section>
       </div>
