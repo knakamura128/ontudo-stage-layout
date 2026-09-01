@@ -55,15 +55,13 @@ function parsePayload(item: Submission): SubmissionPayload {
 function normalizeSchoolName(value: string) { return value.replace(/[\s　]/g, "").replace(/^豊島区立/, "").replace(/小学校$/, ""); }
 
 function pdfPages(items: Submission[]) {
-  return items.flatMap((submission): PdfPage[] => {
+  return items.map((submission): PdfPage => {
     const payload = parsePayload(submission);
-    const programs = payload.programs?.map((value) => value?.trim() ?? "") ?? [submission.program_name];
-    const indices = payload.separatePrograms ? programs.map((name, index) => name ? index : -1).filter((index) => index >= 0) : [0];
-    return (indices.length ? indices : [0]).map((programIndex) => ({
-      submission, payload, programIndex, programName: programs[programIndex] || submission.program_name,
-      performerTotal: payload.separatePrograms ? Number(payload.programPerformers?.[programIndex]) || submission.performer_total : submission.performer_total,
-      layout: payload.layouts?.[String(programIndex)] ?? payload.layouts?.["0"] ?? {},
-    }));
+    return {
+      submission, payload, programIndex: 0, programName: submission.program_name,
+      performerTotal: submission.performer_total,
+      layout: payload.layouts?.["0"] ?? {},
+    };
   });
 }
 
