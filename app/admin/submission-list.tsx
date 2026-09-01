@@ -11,7 +11,7 @@ type PdfPage = { submission: Submission; payload: SubmissionPayload; programInde
 
 const MAX_PERFORMERS = 150;
 const playerSlots = Array.from({ length: MAX_PERFORMERS }, (_, index) => index);
-const schoolOrganizations = ["仰高小学校", "駒込小学校", "巣鴨小学校", "清和小学校", "西巣鴨小学校", "豊成小学校", "朝日小学校", "朋有小学校", "池袋第一小学校", "池袋本町小学校", "池袋第三小学校", "池袋小学校", "高南小学校", "目白小学校", "南池袋小学校", "長崎小学校", "さくら小学校", "椎名町小学校", "富士見台小学校", "千早小学校", "高松小学校", "要小学校", "中学校PTA連合", "としま地域クラブ_ダンス部"];
+const schoolOrganizations = ["仰高小学校", "駒込小学校", "巣鴨小学校", "清和小学校", "西巣鴨小学校", "豊成小学校", "朝日小学校", "朋有小学校", "池袋第一小学校", "池袋本町小学校", "池袋小学校", "高南小学校", "目白小学校", "南池袋小学校", "長崎小学校", "さくら小学校", "椎名町小学校", "富士見台小学校", "千早小学校", "高松小学校", "要小学校", "中学校PTA連合", "としま地域クラブ_ダンス部"];
 
 function fallbackPosition(index: number, fanLayout: boolean, autoPlacement: "riser" | "floor" = "riser", performerCount = MAX_PERFORMERS): StagePoint {
   const performersPerRow = 15;
