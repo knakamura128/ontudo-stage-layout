@@ -428,7 +428,7 @@ export default function Home() {
       <div className="content-wrap form-content">
         <section className="page-heading"><div><p className="section-kicker">STAGE LAYOUT / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第63回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {editingSubmissionId ? (saved ? `申請 #${editingSubmissionId} を保存しました` : `申請 #${editingSubmissionId} を編集中（変更は未保存）`) : saved ? "登録内容を保存しました" : "どなたでも入力・提出できます"}</div></section>
 
-        <nav className="entry-steps" aria-label="入力ステップ">{[[1, "基本情報"], [2, "配置図"], [3, "舞台備品"], [4, "共通申請"], [5, "確認・提出"]].map(([step, label]) => <button key={step} className={currentStep === step ? "is-active" : currentStep > step ? "is-complete" : ""} onClick={() => navigateToStep(Number(step))}><i>{currentStep > step ? "✓" : step}</i><span>{label}</span></button>)}</nav>
+        <nav className="entry-steps" aria-label="入力ステップ">{[[1, "基本情報"], [2, "配置図"], [3, "備品・楽器"], [4, "共通申請"], [5, "確認・提出"]].map(([step, label]) => <button key={step} className={currentStep === step ? "is-active" : currentStep > step ? "is-complete" : ""} onClick={() => navigateToStep(Number(step))}><i>{currentStep > step ? "✓" : step}</i><span>{label}</span></button>)}</nav>
         <FlowGuide step={currentStep} onOpenDemo={() => { setOnboardingPage(1); setOnboardingOpen(true); }} />
 
         {currentStep === 1 && <><section className="request-summary" id="organization">
@@ -472,7 +472,7 @@ export default function Home() {
         </div>{currentStep === 2 && <div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(1)}>← 基本情報へ戻る</button><button onClick={goToNextStep}>舞台備品へ進む →</button></div>}</>}
 
         {currentStep === 3 && <><section className="equipment-workspace" id="stage-equipment">
-          <div className="equipment-heading"><div><p className="mini-label">STAGE EQUIPMENT</p><h2>舞台備品を配置</h2><p>必要な備品を押すと、上の配置図へ追加されます。追加された備品は赤枠で選択され、ドラッグで移動できます。</p></div></div>
+          <div className="equipment-heading"><div><p className="mini-label">STAGE EQUIPMENT & INSTRUMENTS</p><h2>舞台備品と楽器を配置</h2><p>舞台備品は数量を増やすと配置図に追加されます。楽器は名称を入力して「配置図に追加」を押してください。追加後は配置図上で選択し、ドラッグで移動できます。</p></div></div>
           <div className="object-palette"><label className="custom-equipment"><span>その他の備品・楽器</span><input value={customEquipmentName} onChange={(event) => setCustomEquipmentName(event.target.value)} placeholder="例：木琴、和太鼓" /><button type="button" disabled={!customEquipmentName.trim()} onClick={() => addObject(customEquipmentName.trim(), "●", "instrument")}>配置図に追加</button><small>必要な数だけ、同じ名称でも何度でも追加できます</small></label></div>
           <label className={`switch-line power-entry ${selectedObject ? "" : "is-disabled"}`} aria-disabled={!selectedObject}><input type="checkbox" disabled={!selectedObject} checked={selectedObject?.power ?? false} onChange={(e) => setSelectedObjectPower(e.target.checked)} /><span />この備品で電源を使用する <small>{selectedObject ? `選択中：${selectedObject.label}　◆マークが配置図と資料に付きます` : "先に配置図上の備品をタップして選択してください。その他の備品・楽器を追加した直後にも設定できます。"}</small></label>
         </section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(2)}>← 配置図へ戻る</button><button onClick={goToNextStep}>共通申請へ進む →</button></div></>}
@@ -512,7 +512,7 @@ function FlowGuide({ step, onOpenDemo }: { step: number; onOpenDemo: () => void 
   const guide = {
     1: { title: "学校・団体名、演目名、出演人数を入力", chips: ["学校・団体名", "演目名", "出演人数"], tip: "この申請は1演目・1配置図です。配置が変わる演目は、別の申請として作成してください。" },
     2: { title: "出演者を自動で配置する", chips: ["配置先を選ぶ", "出演者を確認", "ドラッグで調整"], tip: "ひな壇または前方舞台を選び、必要なら扇状配置も使えます。" },
-    3: { title: "必要な舞台備品だけを追加", chips: ["数量を決める", "備品を追加", "赤枠を動かす"], tip: "マイク類は数を増やすと配置図にも追加されます。不要になった備品は配置図の × で外せます。" },
+    3: { title: "舞台備品と楽器を配置", chips: ["数量を決める", "楽器名を入力", "配置図を動かす"], tip: "舞台備品は数を増やすと配置図に追加されます。楽器は名称を入力して追加し、不要になったものは配置図の × で外せます。" },
     4: { title: "搬入・音響などを入力", chips: ["車で搬入するか", "音響・映像", "担当者への要望"], tip: "搬入や音響など、当日の設営に必要な情報を入力します。" },
     5: { title: "最後に確認して提出", chips: ["未入力を確認", "必要なら戻る", "提出する"], tip: "提出後は管理者が設営資料として確認します。学校担当者の作業はここで完了です。" },
   }[step] ?? { title: "入力を進める", chips: [], tip: "" };
