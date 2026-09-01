@@ -12,8 +12,7 @@ type SignedInUser = { email: string; name: string; role: "admin" | "viewer" };
 
 const FIXED_STAGE_SIZE = { width: 15, depth: 12 };
 const MAX_PERFORMERS = 150;
-const SCHOOL_OPTIONS = ["仰高小学校", "駒込小学校", "巣鴨小学校", "清和小学校", "西巣鴨小学校", "豊成小学校", "朋有小学校", "朝日小学校", "池袋第一小学校", "池袋小学校", "南池袋小学校", "高南小学校", "目白小学校", "長崎小学校", "要小学校", "椎名町小学校", "富士見台小学校", "千早小学校", "高松小学校", "さくら小学校", "池袋本町小学校"];
-const normalizedSchoolName = (value: string) => value.replace(/[\s　]/g, "").replace(/^豊島区立/, "").replace(/小学校$/, "");
+const SCHOOL_OPTIONS = ["仰高小学校", "駒込小学校", "巣鴨小学校", "清和小学校", "西巣鴨小学校", "豊成小学校", "朝日小学校", "朋有小学校", "池袋第一小学校", "池袋本町小学校", "池袋第三小学校", "池袋小学校", "高南小学校", "目白小学校", "南池袋小学校", "長崎小学校", "さくら小学校", "椎名町小学校", "富士見台小学校", "千早小学校", "高松小学校", "要小学校", "中学校PTA連合", "としま地域クラブ_ダンス部"];
 
 const playerSlots = Array.from({ length: MAX_PERFORMERS }, (_, index) => ({ index }));
 const blankPlayerLabels = () => Object.fromEntries(playerSlots.map(({ index }) => [index, ""]));
@@ -33,10 +32,7 @@ const initialPlayerPositions = (() => {
 export default function Home() {
   const stageRef = useRef<HTMLDivElement>(null);
   const loadedEditIdRef = useRef<number | null>(null);
-  const [programs, setPrograms] = useState(["", "", ""]);
-  const [activeProgram, setActiveProgram] = useState(0);
-  const [separatePrograms, setSeparatePrograms] = useState(false);
-  const [programPerformers, setProgramPerformers] = useState([0, 0, 0]);
+  const [programName, setProgramName] = useState("");
   const [schoolName, setSchoolName] = useState("");
   const [applicantName, setApplicantName] = useState("");
   const [performerTotal, setPerformerTotal] = useState(0);
@@ -46,7 +42,6 @@ export default function Home() {
     2: { fanLayout: false, autoPlacement: "riser", objects: [], playerPositions: {}, playerLabels: blankPlayerLabels(), playerSeats: {} },
   });
   const [carDelivery, setCarDelivery] = useState<"有" | "無">("無");
-  const [deliveryDate, setDeliveryDate] = useState("当日（11/14 10時〜）");
   const [soundVideo, setSoundVideo] = useState<"あり" | "なし">("なし");
   const [soundCue, setSoundCue] = useState<"あり" | "なし">("なし");
   const [media, setMedia] = useState<string[]>([]);
@@ -120,25 +115,22 @@ export default function Home() {
       setSchoolName(submission.school_name); setApplicantName(saved.applicantName ?? ""); setPerformerTotal(submission.performer_total);
       const savedPrograms = Array.isArray(saved.programs) ? saved.programs.slice(0, 3) : [];
       const savedProgramIndex = Math.max(0, savedPrograms.findIndex((program) => program === submission.program_name));
-      setPrograms(savedPrograms.length ? [savedPrograms[0] ?? submission.program_name, savedPrograms[1] ?? "", savedPrograms[2] ?? ""] : [submission.program_name, "", ""]);
-      setSeparatePrograms(Boolean(saved.separatePrograms));
-      setProgramPerformers(Array.isArray(saved.programPerformers) ? [Number(saved.programPerformers[0]) || submission.performer_total, Number(saved.programPerformers[1]) || 0, Number(saved.programPerformers[2]) || 0] : [submission.performer_total, 0, 0]);
+      setProgramName(submission.program_name === "配置図共通" ? savedPrograms.find(Boolean) ?? "" : submission.program_name);
       const savedLayout = saved.layouts?.[savedProgramIndex] ?? saved.layouts?.[0];
-      if (saved.separatePrograms && saved.layouts) setLayouts((now) => ({ ...now, ...saved.layouts }));
-      else if (savedLayout) setLayouts((now) => ({ ...now, 0: savedLayout }));
+      if (savedLayout) setLayouts((now) => ({ ...now, 0: savedLayout }));
       setCounts({ microphones: Number(saved.counts?.microphones) || 0, micStands: Number(saved.counts?.micStands) || 0, podiums: Number(saved.counts?.podiums) || 0, conductorStands: Number(saved.counts?.conductorStands) || 0, musicStands: Number(saved.counts?.musicStands) || 0, playerChairs: Number(saved.counts?.playerChairs) || 0, foldingChairs: Number(saved.counts?.foldingChairs) || 0 });
-      setCarDelivery(saved.carDelivery === "有" ? "有" : "無"); setDeliveryDate(saved.deliveryDate ?? ""); setSoundVideo(saved.soundVideo === "あり" ? "あり" : "なし"); setSoundCue(saved.soundCue === "あり" ? "あり" : "なし"); setMedia(Array.isArray(saved.media) ? saved.media : []); setUsePower(Boolean(saved.usePower)); setUsePiano(Boolean(saved.usePiano)); setUseChildPianoBench(Boolean(saved.useChildPianoBench)); setBringChildPianoBench(Boolean(saved.bringChildPianoBench)); setLoading(Array.isArray(saved.loading) ? saved.loading : []); setPoweredLoading(Array.isArray(saved.poweredLoading) ? saved.poweredLoading : []); setNotes(saved.notes ?? "");
-      setActiveProgram(0); setEditingSubmissionId(submission.id); setSaved(false); setSubmissionMessage("申請内容を読み込みました。修正後に保存または再提出してください。");
+      setCarDelivery(saved.carDelivery === "有" ? "有" : "無"); setSoundVideo(saved.soundVideo === "あり" ? "あり" : "なし"); setSoundCue(saved.soundCue === "あり" ? "あり" : "なし"); setMedia(Array.isArray(saved.media) ? saved.media : []); setUsePower(Boolean(saved.usePower)); setUsePiano(Boolean(saved.usePiano)); setUseChildPianoBench(Boolean(saved.useChildPianoBench)); setBringChildPianoBench(Boolean(saved.bringChildPianoBench)); setLoading(Array.isArray(saved.loading) ? saved.loading : []); setPoweredLoading(Array.isArray(saved.poweredLoading) ? saved.poweredLoading : []); setNotes(saved.notes ?? "");
+      setEditingSubmissionId(submission.id); setSaved(false); setSubmissionMessage("申請内容を読み込みました。修正後に保存または再提出してください。");
     }).catch((error: Error) => { loadedEditIdRef.current = null; setSubmissionMessage(error.message || "申請内容を読み込めませんでした。"); });
   }, [isAdmin]);
   const submissionChecks = [
     { label: "団体情報（学校名）", ok: Boolean(schoolName.trim()) },
-    { label: "出演人数", ok: (separatePrograms ? programPerformers[0] : performerTotal) > 0 },
-    ...(separatePrograms ? [{ label: "演目", ok: Boolean(programs.some((program) => program.trim())) }] : []),
+    { label: "出演人数", ok: performerTotal > 0 },
+    { label: "演目", ok: Boolean(programName.trim()) },
   ];
   const missingChecks = submissionChecks.filter((item) => !item.ok);
   const goToNextStep = () => {
-    if (currentStep === 1 && missingChecks.length) { setStepMessage("学校名と出演人数を入力してください。配置を変える場合は、演目1も入力してください。"); return; }
+    if (currentStep === 1 && missingChecks.length) { setStepMessage("学校・団体名、演目名、出演人数を入力してください。"); return; }
     setStepMessage("");
     setCurrentStep((step) => Math.min(5, step + 1));
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
@@ -150,8 +142,7 @@ export default function Home() {
     try {
       const submissionKey = authUser ? undefined : (sessionStorage.getItem("music-stage-submission-key") ?? crypto.randomUUID());
       if (submissionKey) sessionStorage.setItem("music-stage-submission-key", submissionKey);
-      const primaryPerformerTotal = separatePrograms ? programPerformers[0] : performerTotal;
-      const response = await fetch("/api/submissions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schoolName, programName: separatePrograms ? programs[0] : "配置図共通", performerTotal: primaryPerformerTotal, submit, submissionKey, submissionId: editingSubmissionId ?? undefined, payload: { applicantName, layouts, programs, separatePrograms, programPerformers, counts, carDelivery, deliveryDate, soundVideo, soundCue, media, usePower, usePiano, useChildPianoBench, bringChildPianoBench, loading, poweredLoading, notes } }) });
+      const response = await fetch("/api/submissions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schoolName, programName, performerTotal, submit, submissionKey, submissionId: editingSubmissionId ?? undefined, payload: { applicantName, layouts, programs: [programName], separatePrograms: false, programPerformers: [performerTotal], counts, carDelivery, soundVideo, soundCue, media, usePower, usePiano, useChildPianoBench, bringChildPianoBench, loading, poweredLoading, notes } }) });
       const data = await response.json() as { id?: number; error?: string };
       if (!response.ok) throw new Error(data.error || "保存できませんでした。");
       setSaved(true); setSubmissionMessage(submit ? (editingSubmissionId ? "修正内容を提出済みに更新しました。以前の内容は管理者ページの更新履歴に残ります。PDFをダウンロードして控えを保存できます。" : "提出しました。PDFをダウンロードして控えを保存できます。管理者も設営資料として確認・印刷します。") : "下書きを保存しました。");
@@ -182,7 +173,7 @@ export default function Home() {
     }
   };
 
-  const layoutKey = separatePrograms ? activeProgram : 0;
+  const layoutKey = 0;
   const activeLayout = layouts[layoutKey];
   const fanLayout = activeLayout.fanLayout;
   const autoPlacement = activeLayout.autoPlacement ?? "riser";
@@ -201,11 +192,10 @@ export default function Home() {
 
   const players = playerSlots;
   const placedPlayerCount = players.filter((_, index) => Boolean(activeLayout.playerLabels[index])).length;
-  const currentPerformerTotal = separatePrograms ? programPerformers[activeProgram] : performerTotal;
+  const currentPerformerTotal = performerTotal;
   const changePerformerTotal = (value: number) => {
     const nextValue = Math.min(MAX_PERFORMERS, Math.max(0, value));
-    if (separatePrograms) setProgramPerformers((now) => now.map((count, index) => index === activeProgram ? nextValue : count));
-    else setPerformerTotal(nextValue);
+    setPerformerTotal(nextValue);
     syncPerformerCount(nextValue);
     setSaved(false);
   };
@@ -286,8 +276,7 @@ export default function Home() {
     if (!window.confirm("この配置図の出演者・備品をすべてクリアしますか？")) return;
     updateLayout((now) => ({ ...now, fanLayout: false, objects: [], playerPositions: {}, playerLabels: blankPlayerLabels(), playerSeats: {} }));
     setCounts({ microphones: 0, micStands: 0, podiums: 0, conductorStands: 0, musicStands: 0, playerChairs: 0, foldingChairs: 0 });
-    if (separatePrograms) setProgramPerformers((now) => now.map((count, index) => index === layoutKey ? 0 : count));
-    else setPerformerTotal(0);
+    setPerformerTotal(0);
     setSelectedId(null);
     setSelectedObjectIds([]);
     setPlayerSelection([]);
@@ -313,8 +302,7 @@ export default function Home() {
     const seat = activeLayout.playerSeats[index] ?? "player";
     updateLayout((now) => { const playerLabels = { ...now.playerLabels, [index]: "" }; const playerPositions = { ...now.playerPositions }; const playerSeats = { ...now.playerSeats }; delete playerPositions[index]; delete playerSeats[index]; return { ...now, playerLabels, playerPositions, playerSeats }; });
     if (seat !== "none") setCounts((now) => ({ ...now, [seat === "player" ? "playerChairs" : "foldingChairs"]: Math.max(0, now[seat === "player" ? "playerChairs" : "foldingChairs"] - 1) }));
-    if (separatePrograms) setProgramPerformers((now) => now.map((count, current) => current === layoutKey ? Math.max(0, count - 1) : count));
-    else setPerformerTotal((now) => Math.max(0, now - 1));
+    setPerformerTotal((now) => Math.max(0, now - 1));
     setPlayerSelection([]);
     setSaved(false);
   };
@@ -441,17 +429,16 @@ export default function Home() {
         <section className="page-heading"><div><p className="section-kicker">STAGE LAYOUT / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第63回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {editingSubmissionId ? (saved ? `申請 #${editingSubmissionId} を保存しました` : `申請 #${editingSubmissionId} を編集中（変更は未保存）`) : saved ? "登録内容を保存しました" : "どなたでも入力・提出できます"}</div></section>
 
         <nav className="entry-steps" aria-label="入力ステップ">{[[1, "基本情報"], [2, "配置図"], [3, "舞台備品"], [4, "共通申請"], [5, "確認・提出"]].map(([step, label]) => <button key={step} className={currentStep === step ? "is-active" : currentStep > step ? "is-complete" : ""} onClick={() => navigateToStep(Number(step))}><i>{currentStep > step ? "✓" : step}</i><span>{label}</span></button>)}</nav>
-        <FlowGuide step={currentStep} separatePrograms={separatePrograms} onOpenDemo={() => { setOnboardingPage(1); setOnboardingOpen(true); }} />
+        <FlowGuide step={currentStep} onOpenDemo={() => { setOnboardingPage(1); setOnboardingOpen(true); }} />
 
         {currentStep === 1 && <><section className="request-summary" id="organization">
-          <label><span>学校名</span><input list="school-options" value={schoolName} onChange={(event) => { setSchoolName(event.target.value); setSaved(false); }} onBlur={(event) => { const canonical = SCHOOL_OPTIONS.find((school) => normalizedSchoolName(school) === normalizedSchoolName(event.target.value)); if (canonical) setSchoolName(canonical); }} placeholder="学校名を選択または入力" /></label><label><span>申請者氏名 <small>（任意）</small></span><input value={applicantName} onChange={(event) => { setApplicantName(event.target.value); setSaved(false); }} placeholder="例：山田 太郎" /></label>{!separatePrograms && <label><span>出演人数</span><div className="summary-number"><input type="number" value={performerTotal || ""} min="0" max={MAX_PERFORMERS} onChange={(event) => changePerformerTotal(Number(event.target.value))} placeholder="0" /><small>名</small></div></label>}<label className="separate-program-toggle"><input type="checkbox" checked={separatePrograms} onChange={(event) => { const enabled = event.target.checked; setSeparatePrograms(enabled); if (enabled) { const count = programPerformers[0] || performerTotal; setProgramPerformers((now) => [count, now[1], now[2]]); syncPerformerCount(count, 0); } else setActiveProgram(0); setSaved(false); }} /><span aria-hidden="true" /><span className="toggle-copy"><b>演目ごとに配置を変える</b><small>配置変更がある学校のみ選択してください</small></span></label><datalist id="school-options">{SCHOOL_OPTIONS.map((school) => <option key={school} value={school} />)}</datalist>
+          <label><span>学校・団体名</span><select value={schoolName} onChange={(event) => { setSchoolName(event.target.value); setSaved(false); }}><option value="" disabled>学校・団体名を選択</option>{SCHOOL_OPTIONS.map((school) => <option key={school} value={school}>{school}</option>)}</select></label><label><span>演目名</span><input value={programName} onChange={(event) => { setProgramName(event.target.value); setSaved(false); }} placeholder="例：合唱『手のひらを太陽に』" /></label><label><span>出演人数</span><div className="summary-number"><input type="number" value={performerTotal || ""} min="0" max={MAX_PERFORMERS} onChange={(event) => changePerformerTotal(Number(event.target.value))} placeholder="0" /><small>名</small></div></label><label><span>申請者氏名 <small>（任意）</small></span><input value={applicantName} onChange={(event) => { setApplicantName(event.target.value); setSaved(false); }} placeholder="例：山田 太郎" /></label>
         </section>
-        {separatePrograms && <section className="program-layout-card"><div><p className="mini-label">PROGRAM-SPECIFIC LAYOUTS</p><h2>演目ごとの舞台配置</h2><p>配置を変える演目だけ、演目名と出演人数を入力してください。提出資料は演目ごとに1ページずつ出力されます。</p></div><div className="program-inputs">{[0, 1, 2].map((index) => <label key={index}><span>演目 {index + 1}</span><input value={programs[index]} onChange={(event) => { const value = event.target.value; setPrograms((now) => now.map((program, current) => current === index ? value : program)); setSaved(false); }} placeholder="例：合奏『風のシンフォニー』" /><span>出演人数</span><div className="summary-number"><input type="number" min="0" max={MAX_PERFORMERS} value={programPerformers[index] || ""} onChange={(event) => { const value = Math.max(0, Math.min(MAX_PERFORMERS, Number(event.target.value))); setProgramPerformers((now) => now.map((count, current) => current === index ? value : count)); syncPerformerCount(value, index); setSaved(false); }} /><small>名</small></div></label>)}</div><div className="program-tabs" aria-label="設定する演目">{[0, 1, 2].map((index) => <button key={index} className={activeProgram === index ? "is-active" : ""} onClick={() => { setActiveProgram(index); clearObjectSelection(); clearPlayerSelection(); }} disabled={!programs[index].trim()}>{programs[index].trim() || `演目 ${index + 1}（未入力）`}</button>)}</div></section>}
         {stepMessage && <p className="step-message" role="alert">{stepMessage}</p>}<div className="step-actions"><button onClick={goToNextStep}>配置図へ進む →</button></div></>}
 
-        {(currentStep === 2 || currentStep === 3) && <><section className="notice-card"><b>配置の手順</b><p>{separatePrograms ? "下の演目タブで切り替えて、演目ごとの出演者・備品配置を設定します。共通の搬入・音響申請は、このあと最後に入力します。" : "出演人数を入力すると、出演者が自動で配置されます。必要な椅子と舞台備品の数を指定し、配置図上でドラッグして位置を調整してください。"}</p></section>{separatePrograms && <section className="layout-program-selector" aria-label="配置を設定する演目"><div><b>配置を設定する演目</b><small>選択した演目の配置図だけを編集します。</small></div><div className="program-tabs">{[0, 1, 2].map((index) => <button key={index} className={activeProgram === index ? "is-active" : ""} onClick={() => { setActiveProgram(index); clearObjectSelection(); clearPlayerSelection(); }} disabled={!programs[index].trim()}>{programs[index].trim() || `演目 ${index + 1}（未入力）`}</button>)}</div></section>}<div className="layout-grid detailed-grid">
+        {(currentStep === 2 || currentStep === 3) && <><section className="notice-card"><b>配置の手順</b><p>この申請は「1演目・1配置図」です。演目によって配置が変わる場合は、演目ごとにあらためて申請を作成・提出してください。出演人数を入力すると出演者が自動で配置され、備品は数を指定してからドラッグで位置を調整できます。</p></section><div className="layout-grid detailed-grid">
           <section className="stage-card detailed-stage-card" id="stage">
-            <div className="card-head"><div><p className="mini-label">STAGE LAYOUT / {separatePrograms ? `PROGRAM ${activeProgram + 1}` : "COMMON LAYOUT"}</p><h2>舞台配置図 <span className="view-hint">（{separatePrograms ? programs[layoutKey] : "共通配置"}）</span></h2></div><div className="stage-actions"><button className="clear-layout" onClick={clearStageLayout}>この配置図をクリア</button></div></div>
+            <div className="card-head"><div><p className="mini-label">STAGE LAYOUT / ONE PROGRAM</p><h2>舞台配置図 <span className="view-hint">（{programName || "演目名を入力してください"}）</span></h2></div><div className="stage-actions"><button className="clear-layout" onClick={clearStageLayout}>この配置図をクリア</button></div></div>
             <div className="stage-legend"><span><i className="legend-coral" />出演者 {currentPerformerTotal}名{showPerformers ? "を配置" : "（配置なし）"}</span><span><i className="legend-navy" />固定備品</span><span><i className="legend-power" />電源使用</span><span>出演者・椅子・備品をドラッグして配置</span><span>備品右上の × で削除</span></div>
             <div className="stage-howto" role="note"><b>配置のしかた</b><ol><li>出演者の位置を資料に載せない場合は「配置しない」を選びます</li><li>配置なしでも、必要な出演者椅子・折りたたみ椅子は配置できます</li><li>個別または複数選択で、まとめてドラッグして調整できます</li></ol></div>
             <section className="performer-placement-control" aria-labelledby="performer-placement-title"><div><b id="performer-placement-title">出演者を配置しますか？</b><small>人数だけを提出し、位置を載せないこともできます。</small></div><div role="group" aria-label="出演者を配置するか"><button type="button" className={showPerformers ? "is-active" : ""} aria-pressed={showPerformers} onClick={() => setPerformerPlacement(true)}><span>配置する</span><small>配置図に出演者を表示</small></button><button type="button" className={!showPerformers ? "is-active" : ""} aria-pressed={!showPerformers} onClick={() => setPerformerPlacement(false)}><span>配置しない</span><small>人数のみ資料に記載</small></button></div></section>
@@ -466,7 +453,7 @@ export default function Home() {
                 {!showPerformers && <div className="performers-skipped-note" aria-label={`出演者 ${currentPerformerTotal}名は配置図に表示しません`}>出演者の配置なし（{currentPerformerTotal}名）</div>}
                 {showPerformers && players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "player"; return label ? <button className={`player-dot ${seat} ${selectedPlayerIndices.includes(index) ? "is-selected" : ""}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }} key={player.index} onPointerDown={(event) => { event.stopPropagation(); startPlayerDrag(index, event); }} aria-label={`${label}の出演者を${selectedPlayerIndices.includes(index) ? "選択中。" : "選択して"}移動`}><span>{label}</span></button> : null; })}
                 {!showPerformers && players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "none"; const chairLabel = seat === "player" ? "出演者椅子" : "折りたたみ椅子"; return label && seat !== "none" ? <button className={`player-dot chair-only ${seat} ${selectedPlayerIndices.includes(index) ? "is-selected" : ""}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }} key={player.index} onPointerDown={(event) => { event.stopPropagation(); startPlayerDrag(index, event); }} aria-label={`${chairLabel}を${selectedPlayerIndices.includes(index) ? "選択中。" : "選択して"}移動`}><span>{chairLabel}</span></button> : null; })}
-                {objects.map((item) => <div key={item.id} className="stage-object-wrap" style={{ left: `${item.x}%`, top: `${item.y}%` }}><button className={`stage-object ${item.kind} ${selectedObjectIds.includes(item.id) ? "is-selected" : ""}`} onPointerDown={(event) => { event.stopPropagation(); startObjectDrag(item.id, event); }} aria-label={`${item.label}を${selectedObjectIds.includes(item.id) ? "選択中。" : "選択して"}移動`}><span className="stage-object-icon">{item.icon}</span><span>{item.label}</span>{item.power && <em>◆</em>}</button><button className="stage-object-delete" type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); removeObject(item.id); }} aria-label={`${item.label}を削除`} title={`${item.label}を削除`}>×</button></div>)}
+                {objects.map((item) => <div key={item.id} className="stage-object-wrap" style={{ left: `${item.x}%`, top: `${item.y}%` }}><button className={`stage-object ${item.kind} ${selectedObjectIds.includes(item.id) ? "is-selected" : ""}`} onPointerDown={(event) => { event.stopPropagation(); startObjectDrag(item.id, event); }} aria-label={`${item.label}を${selectedObjectIds.includes(item.id) ? "選択中。" : "選択して"}移動`}><span className="stage-object-icon">{item.icon}</span><span>{item.label}</span>{item.power && <em>◆</em>}</button><button className="stage-object-delete" type="button" onPointerDown={(event) => { event.preventDefault(); event.stopPropagation(); }} onPointerUp={(event) => { event.preventDefault(); event.stopPropagation(); }} onClick={(event) => { event.preventDefault(); event.stopPropagation(); removeObject(item.id); }} aria-label={`${item.label}を削除`} title={`${item.label}を削除`}>×</button></div>)}
                 <div className="audience">客　席</div>
               </div>
             </div>
@@ -493,21 +480,21 @@ export default function Home() {
         {currentStep === 4 && <><section className="application-card" id="common-application">
           <div className="application-head"><div><p className="mini-label">APPLICATION FORM / 1)-3)</p><h2>舞台使用機器・搬出入等申請</h2><p>申請書の入力項目を、舞台配置と同じ画面で管理します。</p></div><span>提出期限　<strong>10月16日（金）</strong></span></div>
           <div className="application-grid">
-            <section className="application-section"><div className="application-number">1</div><div className="application-body"><h3>車での搬入出</h3><div className="field-row"><Field label="搬入出" type="select" value={carDelivery === "有" ? "あり" : "なし"} options={["あり", "なし"]} onChange={(value) => { setCarDelivery(value === "あり" ? "有" : "無"); setSaved(false); }} />{carDelivery === "有" && <Field label="搬入希望日" type="select" value={deliveryDate} options={["前日（11/13 18時〜19時）", "当日（11/14 10時〜）"]} onChange={(value) => { setDeliveryDate(value); setSaved(false); }} />}</div>{carDelivery === "有" && <><Field label="搬入物" type="text" value={loading.join("、")} placeholder="主な搬入物" onChange={(value) => { setLoading(value.split(/[、,]/).map((item) => item.trim()).filter(Boolean)); setSaved(false); }} /><div className="field-row"><Field label="車両責任者氏名" type="text" placeholder="氏名" onChange={() => setSaved(false)} /><Field label="連絡先" type="text" placeholder="電話番号" onChange={() => setSaved(false)} /></div><div className="field-row"><Field label="車種（車高3m未満）" type="text" placeholder="車種" onChange={() => setSaved(false)} /><Field label="台数" type="number" suffix="台" onChange={() => setSaved(false)} /></div></>}</div></section>
+            <section className="application-section"><div className="application-number">1</div><div className="application-body"><h3>車での搬入出</h3><div className="field-row"><Field label="搬入出" type="select" value={carDelivery === "有" ? "あり" : "なし"} options={["あり", "なし"]} onChange={(value) => { setCarDelivery(value === "あり" ? "有" : "無"); setSaved(false); }} /></div>{carDelivery === "有" && <><Field label="搬入物" type="text" value={loading.join("、")} placeholder="主な搬入物" onChange={(value) => { setLoading(value.split(/[、,]/).map((item) => item.trim()).filter(Boolean)); setSaved(false); }} /><div className="field-row"><Field label="車両責任者氏名" type="text" placeholder="氏名" onChange={() => setSaved(false)} /><Field label="連絡先" type="text" placeholder="電話番号" onChange={() => setSaved(false)} /></div><div className="field-row"><Field label="車種（車高3m未満）" type="text" placeholder="車種" onChange={() => setSaved(false)} /><Field label="台数" type="number" suffix="台" onChange={() => setSaved(false)} /></div></>}</div></section>
             <section className="application-section"><div className="application-number">3</div><div className="application-body"><h3>音響・映像備品</h3><div className="field-row"><Field label="音響・映像備品の利用" type="select" value={soundVideo} options={["あり", "なし"]} onChange={(value) => { setSoundVideo(value as "あり" | "なし"); setSaved(false); }} /><Field label="演者から音響への音出し指示" type="select" value={soundCue} options={["あり", "なし"]} onChange={(value) => { setSoundCue(value as "あり" | "なし"); setSaved(false); }} /></div><div className="field-row"><Field label="音楽データ形式" type="text" placeholder="MP3、WAV、CD-DA" onChange={() => setSaved(false)} /><Field label="映像データ形式" type="text" placeholder="mp4、AVCHD" onChange={() => setSaved(false)} /></div><div className="media-field"><span>記録媒体</span><div>{["USB", "SD", "SDHC", "SDXC", "CD-R", "CD-RW", "BD", "DVD"].map((item) => <button className={media.includes(item) ? "is-selected" : ""} key={item} onClick={() => { setMedia((now) => now.includes(item) ? now.filter((current) => current !== item) : [...now, item]); setSaved(false); }}>{media.includes(item) ? "✓ " : ""}{item}</button>)}</div></div><p className="cable-note">電源が必要な機器の場合は、必ず電源ケーブルを持参してください。</p></div></section>
           </div>
         </section>
 
         <section className="notes-card"><div><p className="mini-label">REQUESTS FOR SETUP STAFF</p><h2>その他担当者への要望</h2><p>当日の動きや配慮が必要なことがあれば、任意で入力してください。</p></div><textarea value={notes} onChange={(event) => { setNotes(event.target.value); setSaved(false); }} placeholder={"例）舞台へ入るタイミングを、ピアノの音をきっかけにしたいです。\n例）車椅子の出演者がいます。"} /></section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(3)}>← 舞台備品へ戻る</button><button onClick={goToNextStep}>確認・提出へ進む →</button></div></>}
-        {currentStep === 5 && <><section className="precheck-card" id="precheck"><div><p className="mini-label">PRE-SUBMISSION CHECK</p><h2>提出前チェック</h2><p>学校名・出演人数（配置を変える場合は演目名）の入力有無を確認します。学校名を変更しても入力済みなら点灯します。申請者氏名は連絡用の任意項目です。</p></div><ul>{submissionChecks.map((item) => <li key={item.label} className={item.ok ? "is-ok" : ""}>{item.ok ? "✓" : "!"} {item.label}<span>{item.ok ? "入力済み" : "未入力"}</span></li>)}</ul></section>
+        {currentStep === 5 && <><section className="precheck-card" id="precheck"><div><p className="mini-label">PRE-SUBMISSION CHECK</p><h2>提出前チェック</h2><p>学校・団体名、演目名、出演人数が入力済みか確認します。申請者氏名は連絡用の任意項目です。</p></div><ul>{submissionChecks.map((item) => <li key={item.label} className={item.ok ? "is-ok" : ""}>{item.ok ? "✓" : "!"} {item.label}<span>{item.ok ? "入力済み" : "未入力"}</span></li>)}</ul></section><section className="submission-confirmation" aria-label="提出内容の確認"><p className="mini-label">SUBMISSION SUMMARY</p><h2>提出する内容</h2><dl><div><dt>学校・団体名</dt><dd>{schoolName || "未入力"}</dd></div><div><dt>演目名</dt><dd>{programName || "未入力"}</dd></div><div><dt>出演人数</dt><dd>{performerTotal ? `${performerTotal}名` : "未入力"}</dd></div></dl><p>この内容と、現在表示中の舞台配置図が1件の申請として提出されます。配置が異なる演目は、別の申請を作成してください。</p></section>
         <section className="bottom-card" id="submit"><div><p className="mini-label">SUBMIT</p><h2>この内容で舞台配置を登録しますか？</h2><p>{submissionMessage || "内容を確認して、提出してください。提出後はPDFをダウンロードして控えを保存できます。"}</p></div><div className="submit-actions"><button className="pdf-button" onClick={() => void saveRegistration(false)} disabled={submitModal === "submitting"}>下書きを保存</button><button className="pdf-download-button" onClick={() => void downloadSubmissionPdf()} disabled={creatingPdf || submitModal === "submitting"}>{creatingPdf ? "PDFを作成中…" : "PDFをダウンロード"}</button><button className={`submit-button ${saved ? "is-done" : ""}`} onClick={() => void saveRegistration(true)} disabled={submitModal === "submitting"} aria-busy={submitModal === "submitting"}>{submitModal === "submitting" ? "提出中…" : saved ? "✓　提出済み" : "舞台配置を提出する　→"}</button></div></section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(4)}>← 共通申請へ戻る</button></div></>}
         <section className="submission-pdf" aria-hidden="true">
           <header><p>令和8年度　第63回 音楽のつどい</p><h1>舞台配置・使用機器等 提出資料</h1><small>作成日　{new Intl.DateTimeFormat("ja-JP", { dateStyle: "long", timeZone: "Asia/Tokyo" }).format(new Date())}</small></header>
-          <div className="pdf-meta"><div><span>学校名</span><b>{schoolName || "未入力"}</b></div><div><span>申請者</span><b>{applicantName || "未入力"}</b></div><div><span>出演人数</span><b>{(separatePrograms ? programPerformers[activeProgram] : performerTotal) || placedPlayerCount}名</b></div><div><span>配置</span><b>{separatePrograms ? programs[activeProgram] || "未入力" : "共通配置"}</b></div></div>
+          <div className="pdf-meta"><div><span>学校・団体名</span><b>{schoolName || "未入力"}</b></div><div><span>申請者</span><b>{applicantName || "未入力"}</b></div><div><span>出演人数</span><b>{performerTotal || placedPlayerCount}名</b></div><div><span>演目名</span><b>{programName || "未入力"}</b></div></div>
           <section className="pdf-section"><h2>舞台配置図（幅 {FIXED_STAGE_SIZE.width}m × 奥行 {FIXED_STAGE_SIZE.depth}m）</h2><div className="pdf-stage"><div className="pdf-piano">PIANO</div><div className="pdf-riser pdf-riser-top">ひな壇 2段目　椅子14</div><div className="pdf-riser pdf-riser-low">ひな壇 1段目　椅子16</div>
-            {showPerformers ? players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "player"; return label ? <span key={player.index} className={`pdf-player ${seat}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }}>{label}</span> : null; }) : <><span className="pdf-performers-skipped">出演者の配置なし（{currentPerformerTotal}名）</span>{players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "none"; return label && seat !== "none" ? <span key={player.index} className={`pdf-player chair-only ${seat}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }}>{seat === "player" ? "椅子" : "折り畳"}</span> : null; })}</>}
+            {showPerformers ? players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "none"; return label ? <span key={player.index} className={`pdf-player ${seat}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }}>{seat === "player" ? "🪑 " : seat === "folding" ? "▱ " : ""}{label}</span> : null; }) : <><span className="pdf-performers-skipped">出演者の配置なし（{currentPerformerTotal}名）</span>{players.map((player, index) => { const label = activeLayout.playerLabels[index]; const pos = activeLayout.playerPositions[index] ?? playerPosition(index); const seat = activeLayout.playerSeats[index] ?? "none"; return label && seat !== "none" ? <span key={player.index} className={`pdf-player chair-only ${seat}`} style={{ left: `${pos.left}%`, top: `${pos.top}%` }}>{seat === "player" ? "椅子" : "折り畳"}</span> : null; })}</>}
             {objects.map((item) => <span key={item.id} className={`pdf-object ${item.kind}`} style={{ left: `${item.x}%`, top: `${item.y}%` }}>{item.icon} {item.label}{item.power ? " ◆" : ""}</span>)}<div className="pdf-audience">客　席</div></div><div className="pdf-stage-measurements">後方ひな壇：横12.6m × 縦1.2m　／　前方ひな壇：横10.8m × 縦0.9m　／　ひな壇前方から舞台袖まで：5.0m + 1.2m</div></section>
-          <div className="pdf-info-grid"><section><h2>利用備品・数量</h2><dl><div><dt>ピアノ</dt><dd>{usePiano ? "使用" : "不使用"}</dd></div><div><dt>ワイヤレスマイク</dt><dd>{counts.microphones}本</dd></div><div><dt>マイクスタンド</dt><dd>{counts.micStands}本</dd></div><div><dt>指揮台</dt><dd>{counts.podiums}台</dd></div><div><dt>指揮者用譜面台</dt><dd>{counts.conductorStands}台</dd></div><div><dt>譜面台</dt><dd>{counts.musicStands}台</dd></div><div><dt>出演者椅子</dt><dd>{counts.playerChairs}脚</dd></div><div><dt>折り畳み椅子</dt><dd>{counts.foldingChairs}脚</dd></div><div><dt>電源（コンセント）</dt><dd>{usePower ? "使用" : "不使用"}</dd></div></dl></section><section><h2>搬入・音響</h2><dl><div><dt>車での搬入</dt><dd>{carDelivery}</dd></div><div><dt>搬入希望日</dt><dd>{deliveryDate}</dd></div><div><dt>搬入物</dt><dd>{loading.join("、") || "なし"}</dd></div><div><dt>音響・映像備品</dt><dd>{soundVideo}</dd></div><div><dt>音出し指示</dt><dd>{soundCue}</dd></div></dl></section></div>
+          <div className="pdf-info-grid"><section><h2>利用備品・数量</h2><dl><div><dt>ピアノ</dt><dd>{usePiano ? "使用" : "不使用"}</dd></div><div><dt>ワイヤレスマイク</dt><dd>{counts.microphones}本</dd></div><div><dt>マイクスタンド</dt><dd>{counts.micStands}本</dd></div><div><dt>指揮台</dt><dd>{counts.podiums}台</dd></div><div><dt>指揮者用譜面台</dt><dd>{counts.conductorStands}台</dd></div><div><dt>譜面台</dt><dd>{counts.musicStands}台</dd></div><div><dt>出演者椅子</dt><dd>{counts.playerChairs}脚</dd></div><div><dt>折り畳み椅子</dt><dd>{counts.foldingChairs}脚</dd></div><div><dt>電源（コンセント）</dt><dd>{usePower ? "使用" : "不使用"}</dd></div></dl></section><section><h2>搬入・音響</h2><dl><div><dt>車での搬入</dt><dd>{carDelivery}</dd></div><div><dt>搬入物</dt><dd>{loading.join("、") || "なし"}</dd></div><div><dt>音響・映像備品</dt><dd>{soundVideo}</dd></div><div><dt>音出し指示</dt><dd>{soundCue}</dd></div></dl></section></div>
           <section className="pdf-notes"><h2>その他担当者への要望</h2><p>{notes || "なし"}</p></section><footer>教育委員会提出用／当日設営用資料</footer>
         </section>
       </div>
@@ -521,12 +508,12 @@ function Count({ label, suffix, value, max, onChange }: { label: string; suffix:
   return <label className="count-input"><span>{label}</span><button onClick={() => onChange(value - 1)} type="button">−</button><input type="number" value={value} min="0" max={max} onChange={(e) => onChange(Number(e.target.value))} /><button onClick={() => onChange(value + 1)} type="button">＋</button><small>{suffix}</small></label>;
 }
 
-function FlowGuide({ step, separatePrograms, onOpenDemo }: { step: number; separatePrograms: boolean; onOpenDemo: () => void }) {
+function FlowGuide({ step, onOpenDemo }: { step: number; onOpenDemo: () => void }) {
   const guide = {
-    1: { title: "まずは学校名と出演人数を入力", chips: ["学校名", "出演人数", "配置を変えるか選択"], tip: separatePrograms ? "演目ごとに配置を変える場合は、続けて各演目名と人数を入力します。" : "配置が同じなら、演目ごとの設定は選ばなくて大丈夫です。" },
-    2: { title: separatePrograms ? "演目ごとに配置図をつくる" : "出演者を自動で配置する", chips: separatePrograms ? ["演目タブを選ぶ", "出演者を並べる", "ドラッグで調整"] : ["配置先を選ぶ", "出演者を確認", "ドラッグで調整"], tip: separatePrograms ? "演目タブごとに配置は保存されます。設定し終えたら「舞台備品へ進む」を押してください。" : "ひな壇または前方舞台を選び、必要なら扇状配置も使えます。" },
+    1: { title: "学校・団体名、演目名、出演人数を入力", chips: ["学校・団体名", "演目名", "出演人数"], tip: "この申請は1演目・1配置図です。配置が変わる演目は、別の申請として作成してください。" },
+    2: { title: "出演者を自動で配置する", chips: ["配置先を選ぶ", "出演者を確認", "ドラッグで調整"], tip: "ひな壇または前方舞台を選び、必要なら扇状配置も使えます。" },
     3: { title: "必要な舞台備品だけを追加", chips: ["数量を決める", "備品を追加", "赤枠を動かす"], tip: "マイク類は数を増やすと配置図にも追加されます。不要になった備品は配置図の × で外せます。" },
-    4: { title: "全演目共通の申請を入力", chips: ["車で搬入するか", "音響・映像", "担当者への要望"], tip: separatePrograms ? "この内容はすべての演目で共通です。演目別の配置を設定し終えてから入力します。" : "搬入や音響など、当日の設営に必要な共通情報を入力します。" },
+    4: { title: "搬入・音響などを入力", chips: ["車で搬入するか", "音響・映像", "担当者への要望"], tip: "搬入や音響など、当日の設営に必要な情報を入力します。" },
     5: { title: "最後に確認して提出", chips: ["未入力を確認", "必要なら戻る", "提出する"], tip: "提出後は管理者が設営資料として確認します。学校担当者の作業はここで完了です。" },
   }[step] ?? { title: "入力を進める", chips: [], tip: "" };
   return <section className="flow-guide" aria-live="polite"><div className="flow-guide-head"><span>{step}</span><div><p>この画面でやること</p><h2>{guide.title}</h2></div><button type="button" onClick={onOpenDemo}>動くデモ</button></div><div className="flow-guide-chips">{guide.chips.map((chip, index) => <span key={chip}><i>{index + 1}</i>{chip}</span>)}</div><p className="flow-guide-tip"><b>ポイント</b>{guide.tip}</p></section>;
