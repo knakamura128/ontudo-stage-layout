@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 type StageObject = { id: number; label: string; icon: string; kind: "instrument" | "stand" | "chair"; x: number; y: number; power: boolean };
 type StagePoint = { left: number; top: number };
 type ProgramLayout = { fanLayout?: boolean; autoPlacement?: "riser" | "floor"; showPerformers?: boolean; objects?: StageObject[]; playerPositions?: Record<number, StagePoint>; playerLabels?: Record<number, string>; playerSeats?: Record<number, "player" | "folding" | "none"> };
-type SubmissionPayload = { layouts?: Record<number, ProgramLayout>; programs?: string[]; counts?: Record<string, number>; loading?: string[]; notes?: string; carDelivery?: string; deliveryDate?: string; soundVideo?: string; soundCue?: string; usePower?: boolean; usePiano?: boolean; useChildPianoBench?: boolean; bringChildPianoBench?: boolean };
+type SubmissionPayload = { layouts?: Record<number, ProgramLayout>; programs?: string[]; counts?: Record<string, number>; loading?: string[]; notes?: string; carDelivery?: string; vehicleType?: string; vehicleCount?: string; deliveryDate?: string; soundVideo?: string; soundCue?: string; usePower?: boolean; usePiano?: boolean; useChildPianoBench?: boolean; bringChildPianoBench?: boolean };
 type Row = { id: number; school_name: string; program_name: string; performer_total: number; status: "draft" | "submitted"; payload: string; submitted_at: string | null };
 type Revision = { id: number; school_name: string; program_name: string; performer_total: number; status: "draft" | "submitted"; created_at: string };
 const MAX_PERFORMERS = 150;
@@ -109,7 +109,7 @@ export default async function SubmissionDetail({ params }: { params: Promise<{ i
         </section>
         <section className="setup-information-grid">
           <article><h2>備品・数量</h2><dl><div><dt>ピアノ</dt><dd>{payload.usePiano ? "使用" : "不使用"}</dd></div><div><dt>子ども用ピアノ台</dt><dd>{payload.useChildPianoBench ? payload.bringChildPianoBench ? "使用・持ち込み" : "使用" : "不使用"}</dd></div><div><dt>ワイヤレスマイク</dt><dd>{payload.counts?.microphones ?? 0}本</dd></div><div><dt>マイクスタンド</dt><dd>{payload.counts?.micStands ?? 0}本</dd></div><div><dt>指揮台</dt><dd>{payload.counts?.podiums ?? 0}台</dd></div><div><dt>指揮者用譜面台</dt><dd>{payload.counts?.conductorStands ?? 0}台</dd></div><div><dt>譜面台</dt><dd>{payload.counts?.musicStands ?? 0}台</dd></div><div><dt>出演者椅子</dt><dd>{payload.counts?.playerChairs ?? 0}脚</dd></div><div><dt>折り畳み椅子</dt><dd>{payload.counts?.foldingChairs ?? 0}脚</dd></div></dl></article>
-          <article><h2>搬入・設営</h2><dl><div><dt>車での搬入</dt><dd>{valueOrNone(payload.carDelivery)}</dd></div><div><dt>搬入物</dt><dd>{payload.loading?.join("、") || "なし"}</dd></div><div><dt>電源（コンセント）</dt><dd>{payload.usePower ? "使用" : "不使用"}</dd></div><div><dt>音響・映像備品</dt><dd>{valueOrNone(payload.soundVideo)}</dd></div></dl></article>
+          <article><h2>搬入・設営</h2><dl><div><dt>車での搬入</dt><dd>{valueOrNone(payload.carDelivery)}</dd></div><div><dt>搬入物</dt><dd>{payload.loading?.join("、") || "なし"}</dd></div><div><dt>車種</dt><dd>{valueOrNone(payload.vehicleType)}</dd></div><div><dt>台数</dt><dd>{payload.vehicleCount ? `${payload.vehicleCount}台` : "なし"}</dd></div><div><dt>電源（コンセント）</dt><dd>{payload.usePower ? "使用" : "不使用"}</dd></div><div><dt>音響・映像備品</dt><dd>{valueOrNone(payload.soundVideo)}</dd></div></dl></article>
         </section>
         <section className="setup-notes"><h2>その他担当者への要望</h2><p>{valueOrNone(payload.notes)}</p></section>
         <footer>教育委員会提出用／当日設営用資料　・　Hareza備品設営担当・担当会長でご確認ください</footer>
