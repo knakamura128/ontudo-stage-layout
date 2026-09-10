@@ -163,7 +163,11 @@ export default function Home() {
       const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
       const canvas = await html2canvas(target, { backgroundColor: "#fff", scale: 2 });
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      pdf.addImage(canvas.toDataURL("image/jpeg", 0.94), "JPEG", 0, 0, 210, 297, undefined, "FAST");
+      const sourceRatio = canvas.width / canvas.height;
+      let width = 210;
+      let height = width / sourceRatio;
+      if (height > 297) { height = 297; width = height * sourceRatio; }
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.94), "JPEG", (210 - width) / 2, (297 - height) / 2, width, height, undefined, "FAST");
       const filename = (schoolName.trim() || "提出内容").replace(/[\\/:*?\"<>|]/g, "_");
       pdf.save(`音楽のつどい_舞台配置_${filename}.pdf`);
       setSubmissionMessage("PDFをダウンロードしました。スマホでは、共有メニューから「ファイルに保存」も選べます。");

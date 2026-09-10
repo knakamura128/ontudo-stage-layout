@@ -1,0 +1,1 @@
+ALTER TABLE `submissions` ADD `deleted_at` text;

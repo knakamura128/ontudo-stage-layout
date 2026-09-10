@@ -50,3 +50,52 @@
   top: 22%;
   height: 12.4%;
 }
+
+/* 情報量の多い申請でも、画面・PDFとも末尾を切り捨てない。 */
+.setup-sheet {
+  aspect-ratio: auto;
+  overflow: visible;
+}
+
+.setup-information-grid {
+  align-items: start;
+}
+
+.setup-information-grid article,
+.setup-notes {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.setup-information-grid dd {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
+.submission-pdf.pdf-rendering {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.submission-pdf.pdf-rendering footer {
+  position: static;
+  margin-top: 3mm;
+}
+
+.submission-pdf.pdf-rendering .pdf-info-grid {
+  align-items: start;
+}
+
+.submission-pdf.pdf-rendering .pdf-info-grid section {
+  height: auto;
+  min-height: 0;
+}
+
+.submission-pdf.pdf-rendering .pdf-info-grid dd {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

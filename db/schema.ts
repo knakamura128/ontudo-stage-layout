@@ -10,6 +10,7 @@ export const submissions = sqliteTable("submissions", {
   payload: text("payload").notNull(),
   updatedAt: text("updated_at").notNull(),
   submittedAt: text("submitted_at"),
+  deletedAt: text("deleted_at"),
 });
 
 export const submissionRevisions = sqliteTable("submission_revisions", {

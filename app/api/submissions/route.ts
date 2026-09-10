@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { NextResponse } from "next/server";
 import { readSession } from "@/app/lib/google-auth";
 
-type SubmissionRow = { id: number; owner_email: string; school_name: string; program_name: string; performer_total: number; status: "draft" | "submitted"; payload: string; updated_at: string; submitted_at: string | null };
+type SubmissionRow = { id: number; owner_email: string; school_name: string; program_name: string; performer_total: number; status: "draft" | "submitted"; payload: string; updated_at: string; submitted_at: string | null; deleted_at: string | null };
 let schemaReady: Promise<void> | null = null;
 
 function database() {
@@ -14,7 +14,7 @@ function database() {
 async function ensureSchema(db: D1Database) {
   schemaReady ??= (async () => {
     await db.batch([
-      db.prepare("CREATE TABLE IF NOT EXISTS submissions (id INTEGER PRIMARY KEY AUTOINCREMENT, owner_email TEXT NOT NULL UNIQUE, school_name TEXT NOT NULL, program_name TEXT NOT NULL, performer_total INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'draft', payload TEXT NOT NULL, updated_at TEXT NOT NULL, submitted_at TEXT)"),
+      db.prepare("CREATE TABLE IF NOT EXISTS submissions (id INTEGER PRIMARY KEY AUTOINCREMENT, owner_email TEXT NOT NULL UNIQUE, school_name TEXT NOT NULL, program_name TEXT NOT NULL, performer_total INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'draft', payload TEXT NOT NULL, updated_at TEXT NOT NULL, submitted_at TEXT, deleted_at TEXT)"),
       db.prepare("CREATE INDEX IF NOT EXISTS idx_submissions_status_updated_at ON submissions(status, updated_at DESC)"),
       db.prepare("CREATE TABLE IF NOT EXISTS submission_revisions (id INTEGER PRIMARY KEY AUTOINCREMENT, submission_id INTEGER NOT NULL, school_name TEXT NOT NULL, program_name TEXT NOT NULL, performer_total INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'draft', payload TEXT NOT NULL, created_at TEXT NOT NULL)"),
       db.prepare("CREATE INDEX IF NOT EXISTS idx_submission_revisions_submission_id_created_at ON submission_revisions(submission_id, created_at DESC)"),
@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     if (!user || user.role !== "admin") return NextResponse.json({ error: "管理者としてログインしてください。" }, { status: 403 });
     const db = database();
     await ensureSchema(db);
-    const result = await db.prepare("SELECT id, owner_email, school_name, program_name, performer_total, status, updated_at, submitted_at, payload FROM submissions ORDER BY CASE status WHEN 'submitted' THEN 0 ELSE 1 END, updated_at DESC").all<SubmissionRow>();
+    const result = await db.prepare("SELECT id, owner_email, school_name, program_name, performer_total, status, updated_at, submitted_at, payload FROM submissions WHERE deleted_at IS NULL ORDER BY CASE status WHEN 'submitted' THEN 0 ELSE 1 END, updated_at DESC").all<SubmissionRow>();
     return NextResponse.json({ submissions: result.results ?? [] });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "申請一覧を取得できませんでした。" }, { status: 500 });
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     const status = body.submit ? "submitted" : "draft";
     const submissionId = Number(body.submissionId);
     if (user?.role === "admin" && Number.isSafeInteger(submissionId) && submissionId > 0) {
-      const previous = await db.prepare("SELECT id, owner_email, school_name, program_name, performer_total, status, payload, updated_at, submitted_at FROM submissions WHERE id = ?").bind(submissionId).first<SubmissionRow>();
+      const previous = await db.prepare("SELECT id, owner_email, school_name, program_name, performer_total, status, payload, updated_at, submitted_at, deleted_at FROM submissions WHERE id = ? AND deleted_at IS NULL").bind(submissionId).first<SubmissionRow>();
       if (!previous) return NextResponse.json({ error: "更新対象の申請が見つかりません。" }, { status: 404 });
       await archiveSubmission(db, previous, now);
       const result = await db.prepare("UPDATE submissions SET school_name = ?, program_name = ?, performer_total = ?, status = ?, payload = ?, updated_at = ?, submitted_at = ? WHERE id = ?")
