@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { headers } from "next/headers";
 import { env } from "cloudflare:workers";
 import { readSession } from "@/app/lib/google-auth";
@@ -93,9 +92,9 @@ export default async function SubmissionDetail({ params }: { params: Promise<{ i
   const formatRevisionDate = (value: string) => new Intl.DateTimeFormat("ja-JP", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Tokyo" }).format(new Date(value));
 
   return <main className="admin-shell">
-    <header className="admin-topbar"><Link href="/admin" className="admin-brand"><span>♪</span><b>音楽のつどい</b><small>申請詳細</small></Link><div className="admin-user"><b>{row.status === "submitted" ? "提出済み" : "下書き"}</b></div></header>
+    <header className="admin-topbar"><a href="/admin" className="admin-brand"><span>♪</span><b>音楽のつどい</b><small>申請詳細</small></a><div className="admin-user"><b>{row.status === "submitted" ? "提出済み" : "下書き"}</b></div></header>
     <div className="admin-wrap">
-      <Link href="/admin" className="admin-secondary-link">← 申請一覧へ戻る</Link>
+      <a href="/admin" className="admin-secondary-link">← 申請一覧へ戻る</a>
       <div className="detail-actions"><a href={`/?edit=${row.id}`} className="detail-edit-link">編集画面で修正する →</a><PdfButton /></div>
       <section className="setup-sheet">
         <header className="setup-sheet-header"><div><p>令和8年度　第63回 音楽のつどい</p><h1>舞台設営・備品配置資料</h1></div><aside><b>{row.status === "submitted" ? "提出済み" : "下書き"}</b><small>{submittedAt}</small></aside></header>
