@@ -169,7 +169,8 @@ export default function Home() {
       if (height > 297) { height = 297; width = height * sourceRatio; }
       pdf.addImage(canvas.toDataURL("image/jpeg", 0.94), "JPEG", (210 - width) / 2, (297 - height) / 2, width, height, undefined, "FAST");
       const filename = (schoolName.trim() || "提出内容").replace(/[\\/:*?\"<>|]/g, "_");
-      pdf.save(`音楽のつどい_舞台配置_${filename}.pdf`);
+      const dateStamp = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()).replace(/\D/g, "");
+      pdf.save(`音楽のつどい_舞台配置_${filename}_${dateStamp}.pdf`);
       setSubmissionMessage("PDFをダウンロードしました。スマホでは、共有メニューから「ファイルに保存」も選べます。");
     } catch (error) {
       setSubmissionMessage(error instanceof Error ? error.message : "PDFを作成できませんでした。");

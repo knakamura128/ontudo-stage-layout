@@ -1,7 +1,15 @@
 "use client";
 import { useState } from "react";
 
-export default function PdfButton() {
+function dateStamp() {
+  return new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()).replace(/\D/g, "");
+}
+
+function safeFileName(value: string) {
+  return value.trim().replace(/[\\/:*?\"<>|]/g, "_") || "提出内容";
+}
+
+export default function PdfButton({ schoolName }: { schoolName: string }) {
   const [busy, setBusy] = useState(false);
 
   const create = async () => {
@@ -17,7 +25,7 @@ export default function PdfButton() {
       let height = width / sourceRatio;
       if (height > 297) { height = 297; width = height * sourceRatio; }
       pdf.addImage(canvas.toDataURL("image/jpeg", 0.94), "JPEG", (210 - width) / 2, (297 - height) / 2, width, height, undefined, "FAST");
-      pdf.save("舞台設営・備品配置資料.pdf");
+      pdf.save(`舞台設営・備品配置資料_${safeFileName(schoolName)}_${dateStamp()}.pdf`);
     } finally {
       setBusy(false);
     }

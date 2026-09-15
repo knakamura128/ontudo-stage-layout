@@ -99,3 +99,32 @@
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+
+/* 申請情報は長い学校名・演目名も省略せず、PDFにも全て載せる。 */
+.setup-sheet-meta div {
+  min-width: 0;
+}
+
+.setup-sheet-meta b {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.setup-sheet-meta.has-long-school-name div:first-child b,
+.setup-sheet-meta.has-long-program-name div:last-child b {
+  font-size: clamp(10px, 1.2vw, 13px);
+}
+
+.submission-pdf.pdf-rendering .pdf-meta div {
+  min-width: 0;
+}
+
+.submission-pdf.pdf-rendering .pdf-meta b {
+  display: block;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
