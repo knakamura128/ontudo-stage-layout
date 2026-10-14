@@ -65,6 +65,7 @@ export default function Home() {
   const [customEquipmentReady, setCustomEquipmentReady] = useState(false);
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [authUser, setAuthUser] = useState<SignedInUser | null>(null);
   const [submissionMessage, setSubmissionMessage] = useState("");
   const [submitModal, setSubmitModal] = useState<"submitting" | "success" | null>(null);
@@ -122,7 +123,7 @@ export default function Home() {
       if (savedLayout) setLayouts((now) => ({ ...now, 0: savedLayout }));
       setCounts({ microphones: Math.min(3, Number(saved.counts?.microphones) || 0), micStands: Math.min(3, Number(saved.counts?.micStands) || 0), podiums: Number(saved.counts?.podiums) || 0, conductorStands: Number(saved.counts?.conductorStands) || 0, musicStands: Number(saved.counts?.musicStands) || 0, playerChairs: Number(saved.counts?.playerChairs) || 0, foldingChairs: Number(saved.counts?.foldingChairs) || 0 });
       setCarDelivery(saved.carDelivery === "有" ? "有" : "無"); setVehicleType(saved.vehicleType ?? ""); setVehicleCount(saved.vehicleCount ?? ""); setSoundVideo(saved.soundVideo === "あり" ? "あり" : "なし"); setSoundCue(saved.soundCue === "あり" ? "あり" : "なし"); setMedia(Array.isArray(saved.media) ? saved.media : []); setUsePower(Boolean(saved.usePower)); setUsePiano(Boolean(saved.usePiano)); setUseChildPianoBench(Boolean(saved.useChildPianoBench)); setBringChildPianoBench(Boolean(saved.bringChildPianoBench)); setLoading(Array.isArray(saved.loading) ? saved.loading : []); setPoweredLoading(Array.isArray(saved.poweredLoading) ? saved.poweredLoading : []); setNotes(saved.notes ?? "");
-      setEditingSubmissionId(submission.id); setSaved(false); setSubmissionMessage("申請内容を読み込みました。修正後に保存または再提出してください。");
+      setEditingSubmissionId(submission.id); setSaved(submission.status === "submitted"); setSubmitted(submission.status === "submitted"); setSubmissionMessage(submission.status === "submitted" ? "提出済みの申請内容を読み込みました。修正した場合は、あらためて提出してください。" : "下書きを読み込みました。内容を確認して提出してください。");
     }).catch((error: Error) => { loadedEditIdRef.current = null; setSubmissionMessage(error.message || "申請内容を読み込めませんでした。"); });
   }, [isAdmin]);
   const submissionChecks = [
@@ -147,7 +148,7 @@ export default function Home() {
       const response = await fetch("/api/submissions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ schoolName, programName, performerTotal, submit, submissionKey, submissionId: editingSubmissionId ?? undefined, payload: { layouts, programs: [programName], separatePrograms: false, programPerformers: [performerTotal], counts, carDelivery, vehicleType, vehicleCount, soundVideo, soundCue, media, usePower, usePiano, useChildPianoBench, bringChildPianoBench, loading, poweredLoading, notes } }) });
       const data = await response.json() as { id?: number; error?: string };
       if (!response.ok) throw new Error(data.error || "保存できませんでした。");
-      setSaved(true); setSubmissionMessage(submit ? (editingSubmissionId ? "修正内容を提出済みに更新しました。以前の内容は管理者ページの更新履歴に残ります。PDFをダウンロードして控えを保存できます。" : "提出しました。PDFをダウンロードして控えを保存できます。管理者も設営資料として確認・印刷します。") : "下書きを保存しました。");
+      setSaved(true); setSubmitted(submit); setSubmissionMessage(submit ? (editingSubmissionId ? "修正内容を提出済みに更新しました。以前の内容は管理者ページの更新履歴に残ります。PDFをダウンロードして控えを保存できます。" : "提出しました。PDFをダウンロードして控えを保存できます。管理者も設営資料として確認・印刷します。") : "下書きを保存しました。提出はまだ完了していません。");
       if (submit) setSubmitModal("success");
     } catch (error) { if (submit) setSubmitModal(null); setSubmissionMessage(error instanceof Error ? error.message : "保存できませんでした。"); }
   };
@@ -185,6 +186,7 @@ export default function Home() {
   const fanLayout = activeLayout.fanLayout;
   const autoPlacement = activeLayout.autoPlacement ?? "riser";
   const showPerformers = activeLayout.showPerformers !== false;
+  const submissionComplete = saved && submitted;
   const objects = activeLayout.objects;
   const selectedObject = selectedId === null ? undefined : objects.find((item) => item.id === selectedId);
   const updateLayoutAt = (targetLayoutKey: number, updater: (layout: ProgramLayout) => ProgramLayout) => setLayouts((now) => ({ ...now, [targetLayoutKey]: updater(now[targetLayoutKey]) }));
@@ -450,7 +452,7 @@ export default function Home() {
     <section className="workspace">
       <header className="topbar"><div className="crumbs">ホーム <span>／</span> 舞台配置</div><div className="account"><button type="button" className="text-size-toggle" onClick={toggleLargeText} aria-pressed={largeText}>{largeText ? "文字：標準" : "文字：大きく"}</button><span className="public-entry">どなたでも作成・提出できます</span></div></header>
       <div className="content-wrap form-content">
-        <section className="page-heading"><div><p className="section-kicker">STAGE LAYOUT / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第63回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {editingSubmissionId ? (saved ? `申請 #${editingSubmissionId} を保存しました` : `申請 #${editingSubmissionId} を編集中（変更は未保存）`) : saved ? "登録内容を保存しました" : "どなたでも入力・提出できます"}</div></section>
+        <section className="page-heading"><div><p className="section-kicker">STAGE LAYOUT / 1104</p><h1>ステージ配置・備品申請</h1><p className="lead">第63回 音楽のつどい　舞台配置図</p></div><div className="saved-state"><span /> {editingSubmissionId ? (submissionComplete ? `申請 #${editingSubmissionId} は提出済みです` : saved ? `申請 #${editingSubmissionId} を下書き保存しました` : `申請 #${editingSubmissionId} を編集中（変更は未保存）`) : submissionComplete ? "提出済みです" : saved ? "下書きを保存しました（未提出）" : "どなたでも入力・提出できます"}</div></section>
 
         <nav className="entry-steps" aria-label="入力ステップ">{[[1, "基本情報"], [2, "配置図"], [3, "備品・楽器"], [4, "共通申請"], [5, "確認・提出"]].map(([step, label]) => <button key={step} className={currentStep === step ? "is-active" : currentStep > step ? "is-complete" : ""} onClick={() => navigateToStep(Number(step))}><i>{currentStep > step ? "✓" : step}</i><span>{label}</span></button>)}</nav>
         <FlowGuide step={currentStep} onOpenDemo={() => { setOnboardingPage(1); setOnboardingOpen(true); }} />
@@ -511,7 +513,7 @@ export default function Home() {
 
         <section className="notes-card"><div><p className="mini-label">REQUESTS FOR SETUP STAFF</p><h2>その他担当者への要望</h2><p>当日の動きや配慮が必要なことがあれば、任意で入力してください。</p><p className="privacy-input-note">個人名・住所・電話番号・メールアドレスなどの個人情報は入力しないでください。</p></div><textarea value={notes} onChange={(event) => { setNotes(event.target.value); setSaved(false); }} placeholder={"例）舞台へ入るタイミングを、ピアノの音をきっかけにしたいです。\n例）車椅子の出演者がいます。"} /></section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(3)}>← 舞台備品へ戻る</button><button onClick={goToNextStep}>確認・提出へ進む →</button></div></>}
         {currentStep === 5 && <><section className="precheck-card" id="precheck"><div><p className="mini-label">PRE-SUBMISSION CHECK</p><h2>提出前チェック</h2><p>学校・団体名、演目名、出演人数が入力済みか確認します。</p></div><ul>{submissionChecks.map((item) => <li key={item.label} className={item.ok ? "is-ok" : ""}>{item.ok ? "✓" : "!"} {item.label}<span>{item.ok ? "入力済み" : "未入力"}</span></li>)}</ul></section><section className="submission-confirmation" aria-label="提出内容の確認"><p className="mini-label">SUBMISSION SUMMARY</p><h2>提出する内容</h2><dl><div><dt>学校・団体名</dt><dd>{schoolName || "未入力"}</dd></div><div><dt>演目名</dt><dd>{programName || "未入力"}</dd></div><div><dt>出演人数</dt><dd>{performerTotal ? `${performerTotal}名` : "未入力"}</dd></div></dl><p>この内容と、現在表示中の舞台配置図が1件の申請として提出されます。配置が異なる演目は、別の申請を作成してください。</p></section><section className="contact-link-card submit-contact"><div><p className="mini-label">NEED HELP?</p><h2>提出前の確認・ご相談</h2><p>内容に迷う点がある場合は、提出前にお問い合わせください。</p></div><a href="https://forms.gle/ZRomShPvYu2F4jkZA" target="_blank" rel="noreferrer">お問い合わせフォームを開く <span aria-hidden="true">↗</span></a></section>
-        <section className="bottom-card" id="submit"><div><p className="mini-label">SUBMIT</p><h2>この内容で舞台配置を登録しますか？</h2><p>{submissionMessage || "内容を確認して、提出してください。提出後はPDFをダウンロードして控えを保存できます。"}</p></div><div className="submit-actions"><button className="pdf-button" onClick={() => void saveRegistration(false)} disabled={submitModal === "submitting"}>下書きを保存</button><button className="pdf-download-button" onClick={() => void downloadSubmissionPdf()} disabled={creatingPdf || submitModal === "submitting"}>{creatingPdf ? "PDFを作成中…" : "PDFをダウンロード"}</button><button className={`submit-button ${saved ? "is-done" : ""}`} onClick={() => void saveRegistration(true)} disabled={submitModal === "submitting"} aria-busy={submitModal === "submitting"}>{submitModal === "submitting" ? "提出中…" : saved ? "✓　提出済み" : "舞台配置を提出する　→"}</button></div></section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(4)}>← 共通申請へ戻る</button></div></>}
+        <section className="bottom-card" id="submit"><div><p className="mini-label">SUBMIT</p><h2>この内容で舞台配置を登録しますか？</h2><p>{submissionMessage || "内容を確認して、提出してください。提出後はPDFをダウンロードして控えを保存できます。"}</p></div><div className="submit-actions"><button className="pdf-button" onClick={() => void saveRegistration(false)} disabled={submitModal === "submitting"}>下書きを保存</button><button className="pdf-download-button" onClick={() => void downloadSubmissionPdf()} disabled={creatingPdf || submitModal === "submitting"}>{creatingPdf ? "PDFを作成中…" : "PDFをダウンロード"}</button><button className={`submit-button ${submissionComplete ? "is-done" : ""}`} onClick={() => void saveRegistration(true)} disabled={submitModal === "submitting"} aria-busy={submitModal === "submitting"}>{submitModal === "submitting" ? "提出中…" : submissionComplete ? "✓　提出済み（再提出する）" : "舞台配置を提出する　→"}</button></div></section><div className="step-actions"><button className="secondary" onClick={() => setCurrentStep(4)}>← 共通申請へ戻る</button></div></>}
         <section className="submission-pdf" aria-hidden="true">
           <header><p>令和8年度　第63回 音楽のつどい</p><h1>舞台配置・使用機器等 提出資料</h1><small>作成日　{new Intl.DateTimeFormat("ja-JP", { dateStyle: "long", timeZone: "Asia/Tokyo" }).format(new Date())}</small></header>
           <div className="pdf-meta"><div><span>学校・団体名</span><b>{schoolName || "未入力"}</b></div><div><span>出演人数</span><b>{performerTotal || placedPlayerCount}名</b></div><div><span>演目名</span><b>{programName || "未入力"}</b></div></div>
